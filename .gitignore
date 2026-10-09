@@ -1,0 +1,30 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# MLS data: licensed, never commit
+data/
+*.sql
+*.sql.gz
+*.csv
+*.parquet
+
+# Program materials (confidential)
+*.pdf
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Node
+node_modules/
+dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
