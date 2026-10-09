@@ -29,7 +29,7 @@ Status markers used below:
 ## System diagram
 
 ```mermaid
-flowchart LR
+flowchart TB
     U["User<br/>(WhatsApp on phone)"] <--> WA["WhatsApp servers"]
 
     subgraph GW["OpenClaw Gateway (127.0.0.1:18789)"]
