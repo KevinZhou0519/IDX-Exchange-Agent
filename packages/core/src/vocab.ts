@@ -23,3 +23,10 @@ export function loadVocabulary(path: string = DEFAULT_VOCAB_PATH): Vocabulary {
   }
   return JSON.parse(raw) as Vocabulary;
 }
+
+/** Values the MLS uses when the real city is unknown; never offered as a match. */
+const PLACEHOLDER_CITIES = new Set(["other", "unknown", "unincorporated"]);
+
+export function isPlaceholderCity(name: string): boolean {
+  return PLACEHOLDER_CITIES.has(name.trim().toLowerCase());
+}
