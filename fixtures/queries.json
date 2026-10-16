@@ -53,6 +53,30 @@
         }
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Irvine"
+            ],
+            "match": "exact"
+          }
+        ],
+        "types": [
+          "Condominium"
+        ],
+        "minBeds": 3,
+        "maxPrice": 1500000,
+        "pool": {
+          "value": true,
+          "priority": "must"
+        }
+      }
     }
   },
   {
@@ -98,6 +122,22 @@
       "issueKinds": [
         "auto_corrected"
       ]
+    },
+    "agent": {
+      "outcomes": [
+        "needs_confirmation"
+      ],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Irvine"
+            ],
+            "match": "fuzzy",
+            "input": "irivine"
+          }
+        ]
+      }
     }
   },
   {
@@ -122,6 +162,11 @@
     "expect": {
       "outcome": "ambiguous",
       "issueKinds": [
+        "ambiguous"
+      ]
+    },
+    "agent": {
+      "outcomes": [
         "ambiguous"
       ]
     }
@@ -163,6 +208,22 @@
         "maxPrice": 900000
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Los Angeles"
+            ],
+            "match": "alias"
+          }
+        ],
+        "maxPrice": 900000
+      }
     }
   },
   {
@@ -202,6 +263,26 @@
         ]
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "29 Palms",
+              "Twentynine Palms"
+            ],
+            "match": "alias",
+            "activeListings": 220
+          }
+        ],
+        "types": [
+          "SingleFamilyResidence"
+        ]
+      }
     }
   },
   {
@@ -236,6 +317,21 @@
       "issueKinds": [
         "low_listings"
       ]
+    },
+    "agent": {
+      "outcomes": [
+        "needs_confirmation"
+      ],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Silver Lake"
+            ],
+            "activeListings": 3
+          }
+        ]
+      }
     }
   },
   {
@@ -266,6 +362,15 @@
         "maxPrice": 1200000
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "minPrice": 800000,
+        "maxPrice": 1200000
+      }
     }
   },
   {
@@ -300,6 +405,17 @@
         ]
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "maxPrice": 800000,
+        "types": [
+          "Condominium"
+        ]
+      }
     }
   },
   {
@@ -338,6 +454,19 @@
         ]
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "types": [
+          "SingleFamilyResidence"
+        ],
+        "excludeTypes": [
+          "Condominium"
+        ]
+      }
     }
   },
   {
@@ -371,6 +500,17 @@
         }
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "pool": {
+          "value": true,
+          "priority": "nice"
+        }
+      }
     }
   },
   {
@@ -402,6 +542,17 @@
         "wishes": "near good schools"
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "types": [
+          "SingleFamilyResidence"
+        ],
+        "wishes": "near good schools"
+      }
     }
   },
   {
@@ -433,6 +584,14 @@
         "maxHoa": 500
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "maxHoa": 500
+      }
     }
   },
   {
@@ -463,6 +622,15 @@
         "minSqft": 1800
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "minBaths": 2.5,
+        "minSqft": 1800
+      }
     }
   },
   {
@@ -491,6 +659,16 @@
       "issueKinds": [
         "evidence_mismatch"
       ]
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "maxPrice": 1500000,
+        "minBeds": 3
+      },
+      "note": "a correct model reads 1.5 mil as 1500000"
     }
   },
   {
@@ -521,6 +699,12 @@
       "issueKinds": [
         "implausible"
       ]
+    },
+    "agent": {
+      "outcomes": [
+        "ambiguous"
+      ],
+      "note": "30 beds stays implausible after the retry, so the agent must ask, not silently drop it"
     }
   },
   {
@@ -547,6 +731,12 @@
       "issueKinds": [
         "not_found"
       ]
+    },
+    "agent": {
+      "outcomes": [
+        "ambiguous"
+      ],
+      "note": "Gotham is not found on either attempt"
     }
   },
   {
@@ -573,6 +763,9 @@
       "issueKinds": [
         "not_found"
       ]
+    },
+    "agent": {
+      "skip": "attempt 2 can only be forced in the simulation"
     }
   },
   {
@@ -622,6 +815,28 @@
         ]
       },
       "issueKinds": []
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Irvine"
+            ]
+          },
+          {
+            "values": [
+              "Tustin"
+            ]
+          }
+        ],
+        "types": [
+          "Townhouse"
+        ]
+      }
     }
   },
   {
@@ -646,6 +861,13 @@
       "issueKinds": [
         "implausible"
       ]
+    },
+    "agent": {
+      "outcomes": [
+        "ok",
+        "ambiguous"
+      ],
+      "note": "monthly rent is not a sale price: dropped or asked about"
     }
   },
   {
@@ -676,6 +898,15 @@
       "issueKinds": [
         "evidence_mismatch"
       ]
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "maxPrice": 1500000
+      },
+      "note": "a correct model quotes the real words"
     }
   }
 ]

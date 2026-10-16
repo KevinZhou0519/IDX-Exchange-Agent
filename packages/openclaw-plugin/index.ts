@@ -1,5 +1,6 @@
 // OpenClaw adapter for the IDX agent. The only file that imports OpenClaw;
 // all behavior lives in @idx/core.
+import { appendFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import {
@@ -26,6 +27,10 @@ export function createParseTool(vocab: Vocabulary) {
     parameters: ExtractionSchema,
     async execute(_toolCallId: string, params: Extraction) {
       const details: ResolveResult = resolveExtraction(params, vocab);
+      // Evaluation runs only (scripts/eval-llm.ts). Unset by default, so user
+      // messages are never written to disk in normal use.
+      const evalLog = process.env.IDX_EVAL_LOG;
+      if (evalLog) appendFileSync(evalLog, JSON.stringify({ text: params.text, params, details }) + "\n");
       const { outcome, summary, issues } = details;
       return {
         content: [{ type: "text" as const, text: JSON.stringify({ outcome, summary, issues }) }],
