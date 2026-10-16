@@ -5,14 +5,12 @@ during the IDX Exchange AI Agentic Engineer internship. Users ask questions over
 WhatsApp; the agent answers from California MLS data: active listings
 (`rets_property`) and sold comps (`california_sold`) in MySQL.
 
-**Architecture and workflow diagrams:** [docs/architecture.md](docs/architecture.md)
-
 ## Progress
 
 | Week | Focus | Status |
 |---|---|---|
-| 0 | Environment setup: OpenClaw, MySQL import, WhatsApp | Done ([notes](docs/weekly/week-00-setup.md)) |
-| 1 | OpenClaw architecture fundamentals | Done ([notes](docs/weekly/week-01-architecture.md)) |
+| 0 | Environment setup: OpenClaw, MySQL import, WhatsApp | Done |
+| 1 | OpenClaw architecture fundamentals | Done |
 | 2 | Natural-language property search | Next |
 | 3 | MySQL integration (parameterized queries, pagination) | |
 | 4 | Multi-turn conversational search | |
@@ -32,9 +30,6 @@ WhatsApp → OpenClaw Gateway → session → agent loop
          → model picks a skill → skill calls a typed tool
          → parameterized SQL on MySQL → reply over WhatsApp
 ```
-
-The full flow, component table and design decisions are in
-[docs/architecture.md](docs/architecture.md).
 
 ## Running it locally
 
@@ -62,8 +57,6 @@ Prerequisites: Node 24.16+, pnpm (via corepack), MySQL 8.4, Python 3.12.
    ```
 5. Link WhatsApp: `corepack pnpm openclaw channels login --channel whatsapp`
 
-Setup problems and fixes: [docs/weekly/week-00-setup.md](docs/weekly/week-00-setup.md).
-
 ## Data
 
 The MLS data is licensed CRMLS data supplied by IDX Exchange. It is **not** in
@@ -73,9 +66,6 @@ dumps and the `data/` folder.
 ## Repository layout
 
 ```text
-docs/
-  architecture.md          system and sequence diagrams, design decisions
-  weekly/                  one progress note per week
 .env.example               environment variables the agent needs
 ```
 
