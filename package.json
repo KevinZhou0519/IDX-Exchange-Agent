@@ -1,0 +1,18 @@
+{
+  "name": "idx-exchange-agent",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.5.0",
+  "scripts": {
+    "test": "vitest run",
+    "vocab": "node scripts/build-vocab.ts",
+    "eval": "node scripts/eval-llm.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "mysql2": "^3.24.6",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  }
+}
