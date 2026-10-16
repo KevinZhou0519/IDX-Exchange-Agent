@@ -3,31 +3,48 @@
 import { Type, type Static } from "typebox";
 
 /** The user's own words that a value was read from. Must appear in the message. */
-export const Evidence = Type.String({ minLength: 1 });
+export const Evidence = Type.String({
+  minLength: 1,
+  description: "The exact words from the user's message this value came from, copied verbatim",
+});
 
-const NumberField = Type.Object({ value: Type.Number(), evidence: Evidence });
-const StringItem = Type.Object({ value: Type.String({ minLength: 1 }), evidence: Evidence });
+const NumberField = Type.Object({
+  value: Type.Number({ description: "Number as a plain value, e.g. 1500000 for $1.5M" }),
+  evidence: Evidence,
+});
+const StringItem = Type.Object({
+  value: Type.String({ minLength: 1, description: "The user's word as written (typos included); the tool matches it to the data" }),
+  evidence: Evidence,
+});
 const FeatureField = Type.Object({
   value: Type.Boolean(),
-  priority: Type.Union([Type.Literal("must"), Type.Literal("nice")]),
+  priority: Type.Union([Type.Literal("must"), Type.Literal("nice")], {
+    description: '"must" for a requirement ("with a pool"), "nice" for a preference ("ideally a pool")',
+  }),
   evidence: Evidence,
 });
 
 export const ExtractionSchema = Type.Object({
   text: Type.String({ minLength: 1, description: "The user's message, verbatim" }),
-  attempt: Type.Union([Type.Literal(1), Type.Literal(2)]),
-  cities: Type.Optional(Type.Array(StringItem)),
+  attempt: Type.Union([Type.Literal(1), Type.Literal(2)], {
+    description: "1 for the first call; 2 only when retrying after outcome needs_retry",
+  }),
+  cities: Type.Optional(Type.Array(StringItem, { description: "One entry per city or area mentioned" })),
   minPrice: Type.Optional(NumberField),
   maxPrice: Type.Optional(NumberField),
   minBeds: Type.Optional(NumberField),
   minBaths: Type.Optional(NumberField),
   minSqft: Type.Optional(NumberField),
   maxHoa: Type.Optional(NumberField),
-  types: Type.Optional(Type.Array(StringItem)),
-  excludeTypes: Type.Optional(Type.Array(StringItem)),
+  types: Type.Optional(Type.Array(StringItem, { description: "Property types wanted, e.g. condo, townhome, house" })),
+  excludeTypes: Type.Optional(
+    Type.Array(StringItem, { description: "Property types ruled out, e.g. \"not a condo\"" }),
+  ),
   pool: Type.Optional(FeatureField),
   view: Type.Optional(FeatureField),
-  wishes: Type.Optional(Type.String()),
+  wishes: Type.Optional(
+    Type.String({ description: "Anything the user wants that the fields above cannot express, e.g. \"near good schools\"" }),
+  ),
 });
 
 export type Extraction = Static<typeof ExtractionSchema>;
