@@ -1,0 +1,681 @@
+[
+  {
+    "id": "q-handbook",
+    "text": "Show me 3-bedroom condos in Irvine under $1.5M with a pool.",
+    "extraction": {
+      "text": "Show me 3-bedroom condos in Irvine under $1.5M with a pool.",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "minBeds": {
+        "value": 3,
+        "evidence": "3-bedroom"
+      },
+      "types": [
+        {
+          "value": "condos",
+          "evidence": "condos"
+        }
+      ],
+      "maxPrice": {
+        "value": 1500000,
+        "evidence": "under $1.5M"
+      },
+      "pool": {
+        "value": true,
+        "priority": "must",
+        "evidence": "with a pool"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Irvine"
+            ],
+            "match": "exact"
+          }
+        ],
+        "types": [
+          "Condominium"
+        ],
+        "minBeds": 3,
+        "maxPrice": 1500000,
+        "pool": {
+          "value": true,
+          "priority": "must"
+        }
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-typo-irivine",
+    "text": "3br condo in irivine under 1.5 mil",
+    "extraction": {
+      "text": "3br condo in irivine under 1.5 mil",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "irivine",
+          "evidence": "irivine"
+        }
+      ],
+      "minBeds": {
+        "value": 3,
+        "evidence": "3br"
+      },
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ],
+      "maxPrice": {
+        "value": 1500000,
+        "evidence": "under 1.5 mil"
+      }
+    },
+    "expect": {
+      "outcome": "needs_confirmation",
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Irvine"
+            ],
+            "match": "fuzzy",
+            "input": "irivine"
+          }
+        ]
+      },
+      "issueKinds": [
+        "auto_corrected"
+      ]
+    }
+  },
+  {
+    "id": "q-tie-irvin",
+    "text": "homes in irvin",
+    "extraction": {
+      "text": "homes in irvin",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "irvin",
+          "evidence": "irvin"
+        }
+      ],
+      "types": [
+        {
+          "value": "homes",
+          "evidence": "homes"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "ambiguous",
+      "issueKinds": [
+        "ambiguous"
+      ]
+    }
+  },
+  {
+    "id": "q-alias-la",
+    "text": "condo in LA under $900k",
+    "extraction": {
+      "text": "condo in LA under $900k",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "LA",
+          "evidence": "LA"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ],
+      "maxPrice": {
+        "value": 900000,
+        "evidence": "under $900k"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Los Angeles"
+            ],
+            "match": "alias"
+          }
+        ],
+        "maxPrice": 900000
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-alias-29-palms",
+    "text": "cheap house in 29 palms",
+    "extraction": {
+      "text": "cheap house in 29 palms",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "29 palms",
+          "evidence": "29 palms"
+        }
+      ],
+      "types": [
+        {
+          "value": "house",
+          "evidence": "house"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "29 Palms",
+              "Twentynine Palms"
+            ],
+            "match": "alias",
+            "activeListings": 220
+          }
+        ],
+        "types": [
+          "SingleFamilyResidence"
+        ]
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-low-listings-silver-lake",
+    "text": "2 bed in Silver Lake",
+    "extraction": {
+      "text": "2 bed in Silver Lake",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Silver Lake",
+          "evidence": "Silver Lake"
+        }
+      ],
+      "minBeds": {
+        "value": 2,
+        "evidence": "2 bed"
+      }
+    },
+    "expect": {
+      "outcome": "needs_confirmation",
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Silver Lake"
+            ],
+            "activeListings": 3
+          }
+        ]
+      },
+      "issueKinds": [
+        "low_listings"
+      ]
+    }
+  },
+  {
+    "id": "q-price-range",
+    "text": "between $800k and $1.2M in Pasadena",
+    "extraction": {
+      "text": "between $800k and $1.2M in Pasadena",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Pasadena",
+          "evidence": "Pasadena"
+        }
+      ],
+      "minPrice": {
+        "value": 800000,
+        "evidence": "$800k"
+      },
+      "maxPrice": {
+        "value": 1200000,
+        "evidence": "$1.2M"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "minPrice": 800000,
+        "maxPrice": 1200000
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-price-formats-800k",
+    "text": "condo under 800k in San Diego",
+    "extraction": {
+      "text": "condo under 800k in San Diego",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "San Diego",
+          "evidence": "San Diego"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ],
+      "maxPrice": {
+        "value": 800000,
+        "evidence": "under 800k"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "maxPrice": 800000,
+        "types": [
+          "Condominium"
+        ]
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-exclude-condo",
+    "text": "house in Orange, not a condo",
+    "extraction": {
+      "text": "house in Orange, not a condo",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Orange",
+          "evidence": "Orange"
+        }
+      ],
+      "types": [
+        {
+          "value": "house",
+          "evidence": "house"
+        }
+      ],
+      "excludeTypes": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "types": [
+          "SingleFamilyResidence"
+        ],
+        "excludeTypes": [
+          "Condominium"
+        ]
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-nice-pool",
+    "text": "3 bed in Tustin, ideally with a pool",
+    "extraction": {
+      "text": "3 bed in Tustin, ideally with a pool",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Tustin",
+          "evidence": "Tustin"
+        }
+      ],
+      "minBeds": {
+        "value": 3,
+        "evidence": "3 bed"
+      },
+      "pool": {
+        "value": true,
+        "priority": "nice",
+        "evidence": "ideally with a pool"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "pool": {
+          "value": true,
+          "priority": "nice"
+        }
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-wishes-schools",
+    "text": "family home in Irvine near good schools",
+    "extraction": {
+      "text": "family home in Irvine near good schools",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "types": [
+        {
+          "value": "home",
+          "evidence": "home"
+        }
+      ],
+      "wishes": "near good schools"
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "types": [
+          "SingleFamilyResidence"
+        ],
+        "wishes": "near good schools"
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-max-hoa",
+    "text": "condo in Irvine with HOA under $500",
+    "extraction": {
+      "text": "condo in Irvine with HOA under $500",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ],
+      "maxHoa": {
+        "value": 500,
+        "evidence": "HOA under $500"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "maxHoa": 500
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-sqft-baths",
+    "text": "Newport Beach, 2.5 baths, at least 1,800 sq ft",
+    "extraction": {
+      "text": "Newport Beach, 2.5 baths, at least 1,800 sq ft",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Newport Beach",
+          "evidence": "Newport Beach"
+        }
+      ],
+      "minBaths": {
+        "value": 2.5,
+        "evidence": "2.5 baths"
+      },
+      "minSqft": {
+        "value": 1800,
+        "evidence": "at least 1,800 sq ft"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "minBaths": 2.5,
+        "minSqft": 1800
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-evidence-mismatch",
+    "text": "3br in Irvine under 1.5 mil",
+    "extraction": {
+      "text": "3br in Irvine under 1.5 mil",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "minBeds": {
+        "value": 3,
+        "evidence": "3br"
+      },
+      "maxPrice": {
+        "value": 150000,
+        "evidence": "under 1.5 mil"
+      }
+    },
+    "expect": {
+      "outcome": "needs_retry",
+      "issueKinds": [
+        "evidence_mismatch"
+      ]
+    }
+  },
+  {
+    "id": "q-implausible-beds",
+    "text": "30 bedroom house in Pasadena",
+    "extraction": {
+      "text": "30 bedroom house in Pasadena",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Pasadena",
+          "evidence": "Pasadena"
+        }
+      ],
+      "types": [
+        {
+          "value": "house",
+          "evidence": "house"
+        }
+      ],
+      "minBeds": {
+        "value": 30,
+        "evidence": "30 bedroom"
+      }
+    },
+    "expect": {
+      "outcome": "needs_retry",
+      "issueKinds": [
+        "implausible"
+      ]
+    }
+  },
+  {
+    "id": "q-unknown-city",
+    "text": "homes in Gotham",
+    "extraction": {
+      "text": "homes in Gotham",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Gotham",
+          "evidence": "Gotham"
+        }
+      ],
+      "types": [
+        {
+          "value": "homes",
+          "evidence": "homes"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "needs_retry",
+      "issueKinds": [
+        "not_found"
+      ]
+    }
+  },
+  {
+    "id": "q-unknown-city-second-try",
+    "text": "homes in Gotham",
+    "extraction": {
+      "text": "homes in Gotham",
+      "attempt": 2,
+      "cities": [
+        {
+          "value": "Gotham",
+          "evidence": "Gotham"
+        }
+      ],
+      "types": [
+        {
+          "value": "homes",
+          "evidence": "homes"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "ambiguous",
+      "issueKinds": [
+        "not_found"
+      ]
+    }
+  },
+  {
+    "id": "q-two-cities",
+    "text": "townhouse in Irvine or Tustin under $1M",
+    "extraction": {
+      "text": "townhouse in Irvine or Tustin under $1M",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        },
+        {
+          "value": "Tustin",
+          "evidence": "Tustin"
+        }
+      ],
+      "types": [
+        {
+          "value": "townhouse",
+          "evidence": "townhouse"
+        }
+      ],
+      "maxPrice": {
+        "value": 1000000,
+        "evidence": "under $1M"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Irvine"
+            ]
+          },
+          {
+            "values": [
+              "Tustin"
+            ]
+          }
+        ],
+        "types": [
+          "Townhouse"
+        ]
+      },
+      "issueKinds": []
+    }
+  },
+  {
+    "id": "q-rent-price",
+    "text": "place in Irvine for $3,000/month",
+    "extraction": {
+      "text": "place in Irvine for $3,000/month",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "maxPrice": {
+        "value": 3000,
+        "evidence": "$3,000/month"
+      }
+    },
+    "expect": {
+      "outcome": "needs_retry",
+      "issueKinds": [
+        "implausible"
+      ]
+    }
+  },
+  {
+    "id": "q-quote-not-in-message",
+    "text": "condo in Irvine under $1.5M",
+    "extraction": {
+      "text": "condo in Irvine under $1.5M",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ],
+      "maxPrice": {
+        "value": 2000000,
+        "evidence": "under $2M"
+      }
+    },
+    "expect": {
+      "outcome": "needs_retry",
+      "issueKinds": [
+        "evidence_mismatch"
+      ]
+    }
+  }
+]

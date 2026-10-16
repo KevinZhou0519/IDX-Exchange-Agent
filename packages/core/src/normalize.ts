@@ -40,11 +40,13 @@ export function normalizeText(s: string): string {
 
 /** First dollar-style amount in the text: "$1.5M", "800k", "1.5 million", "$1,200,000". */
 export function parseAmount(s: string): number | null {
-  const match = /(\d[\d,]*(?:\.\d+)?)\s*(k|m|mil|million|b|billion)?(?![a-z])/i.exec(s);
+  // The word right after the number scales it only when it is a multiplier;
+  // units such as "sqft" or "miles" leave the number as written.
+  const match = /(\d[\d,]*(?:\.\d+)?)\s*([a-z]*)/i.exec(s);
   if (!match) return null;
   const base = Number(match[1].replace(/,/g, ""));
   if (!Number.isFinite(base)) return null;
-  const multiplier = match[2] ? MULTIPLIERS[match[2].toLowerCase()] : 1;
+  const multiplier = MULTIPLIERS[match[2].toLowerCase()] ?? 1;
   return Math.round(base * multiplier);
 }
 

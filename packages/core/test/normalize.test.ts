@@ -27,6 +27,9 @@ describe("parseAmount", () => {
     ["$800K", 800_000],
     ["$1,200,000", 1_200_000],
     ["$500/month", 500],
+    ["1800sqft", 1_800],
+    ["at least 1,800 sq ft", 1_800],
+    ["5 miles from the beach", 5],
   ])("reads %j as %d", (input, expected) => {
     expect(parseAmount(input)).toBe(expected);
   });
