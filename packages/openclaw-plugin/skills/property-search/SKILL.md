@@ -63,7 +63,10 @@ describe filters, corrections or listing counts the tool did not return.
   answer.
 - **`needs_retry`**: read `issues`, fix your extraction (correct the value or
   copy the evidence exactly), and call the tool again with `attempt: 2`.
-  Never make a third call.
+  Never make a third call. A retry may correct a value but must keep every
+  field the user asked for: never drop a city, price or other filter to make
+  an issue go away. If you cannot fix it, send it unchanged so the tool returns
+  `ambiguous`, then ask the user about it.
 - **`ambiguous`**: ask one specific question built from `issues[].candidates`,
   listing at most three options with their listing counts.
 

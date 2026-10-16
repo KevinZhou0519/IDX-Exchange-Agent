@@ -60,6 +60,13 @@ describe("matchType", () => {
     expect(matchType("condo", fixtureVocab)).toMatchObject({ kind: "alias", values: ["Condominium"] });
   });
 
+  it.each(["family home", "family homes", "single family home", "single-family homes"])(
+    "maps %j to single-family residences",
+    (word) => {
+      expect(matchType(word, fixtureVocab)).toMatchObject({ kind: "alias", values: ["SingleFamilyResidence"] });
+    },
+  );
+
   it("matches a dataset type exactly", () => {
     expect(matchType("Townhouse", fixtureVocab)).toMatchObject({ kind: "exact", values: ["Townhouse"] });
   });
