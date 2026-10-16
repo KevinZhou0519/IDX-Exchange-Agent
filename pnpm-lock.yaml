@@ -169,6 +169,9 @@ importers:
       '@types/node':
         specifier: ^24.19.2
         version: 24.19.2
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
       mysql2:
         specifier: ^3.24.6
         version: 3.24.6(@types/node@24.19.2)
@@ -1179,7 +1182,6 @@ snapshots:
       '@esbuild/win32-arm64': 0.28.2
       '@esbuild/win32-ia32': 0.28.2
       '@esbuild/win32-x64': 0.28.2
-    optional: true
 
   estree-walker@3.0.3:
     dependencies:

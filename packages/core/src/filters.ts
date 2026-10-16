@@ -26,7 +26,11 @@ const FeatureField = Type.Object({
 
 export const ExtractionSchema = Type.Object({
   text: Type.String({ minLength: 1, description: "The user's message, verbatim" }),
-  attempt: Type.Union([Type.Literal(1), Type.Literal(2)], {
+  // An integer range, not a union of number literals: Gemini only supports
+  // string enums, and OpenClaw would turn 1 | 2 into "1" | "2".
+  attempt: Type.Integer({
+    minimum: 1,
+    maximum: 2,
     description: "1 for the first call; 2 only when retrying after outcome needs_retry",
   }),
   cities: Type.Optional(Type.Array(StringItem, { description: "One entry per city or area mentioned" })),
@@ -92,7 +96,7 @@ export type Outcome = "ok" | "needs_confirmation" | "needs_retry" | "ambiguous";
 
 export type ResolveResult = {
   outcome: Outcome;
-  attempt: 1 | 2;
+  attempt: number;
   filters: ResolvedFilters;
   issues: Issue[];
   summary: string;

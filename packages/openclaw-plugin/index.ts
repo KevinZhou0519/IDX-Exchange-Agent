@@ -1,5 +1,6 @@
 // OpenClaw adapter for the IDX agent. The only file that imports OpenClaw;
 // all behavior lives in @idx/core.
+import { fileURLToPath } from "node:url";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import {
   ExtractionSchema,
@@ -39,7 +40,9 @@ export default definePluginEntry({
   name: "IDX Exchange Agent",
   description: "Natural-language property search over California MLS data.",
   register(api) {
-    // Loaded once at startup; throws with the command to run if the vocabulary is missing.
-    api.registerTool(createParseTool(loadVocabulary()));
+    // The build copies the vocabulary next to the bundle (dist/data/vocab.json).
+    // Loaded once at startup; throws with the command to run if it is missing.
+    const vocabPath = fileURLToPath(new URL("./data/vocab.json", import.meta.url));
+    api.registerTool(createParseTool(loadVocabulary(vocabPath)));
   },
 });

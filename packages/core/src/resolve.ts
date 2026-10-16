@@ -74,7 +74,7 @@ function evidenceIssue(field: string, input: string, evidence: string, reason: s
   };
 }
 
-function decideOutcome(issues: Issue[], attempt: 1 | 2): Outcome {
+function decideOutcome(issues: Issue[], attempt: number): Outcome {
   if (issues.some((issue) => issue.kind === "ambiguous")) return "ambiguous";
   if (issues.some((issue) => RETRYABLE.has(issue.kind))) return attempt === 1 ? "needs_retry" : "ambiguous";
   if (issues.some((issue) => CONFIRMABLE.has(issue.kind))) return "needs_confirmation";
