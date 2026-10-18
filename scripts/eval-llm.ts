@@ -2,7 +2,8 @@
 // (model + plugin) and scores the final parse_property_query result of each
 // turn against the query's `agent` expectation.
 //
-// Usage: stop the gateway, then `corepack pnpm eval` (optionally `-- q-handbook q-tie-irvin`).
+// Usage: stop the gateway, keep the lid open, then `corepack pnpm eval` (optionally
+// `-- q-handbook q-tie-irvin`). The npm script wraps it in `caffeinate -i` on macOS.
 // Needs the plugin installed and built (corepack pnpm build:plugin).
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -82,16 +83,21 @@ for (const [index, entry] of entries.entries()) {
     issues: final?.issues.map((issue) => issue.message),
     reply: replyText(run.stdout ?? ""),
     exitCode: run.status,
+    timedOut: run.status === null,
     seconds: Math.round((Date.now() - started) / 1000),
   };
   results.push(result);
-  const mark = outcomePass && fieldsPass !== false ? "PASS" : "FAIL";
+  // spawnSync reports a null exit status when the timeout killed the run (e.g. the Mac slept).
+  const timedOut = run.status === null;
+  const mark = timedOut ? "TIMEOUT" : outcomePass && fieldsPass !== false ? "PASS" : "FAIL";
   console.log(`[${index + 1}/${entries.length}] ${mark} ${entry.id}: ${result.finalOutcome} (${calls.length} call${calls.length === 1 ? "" : "s"}, ${result.seconds}s)`);
 }
 
+const timeouts = results.filter((r) => r.timedOut).length;
 const outcomePasses = results.filter((r) => r.outcomePass).length;
 const fieldResults = results.filter((r) => r.fieldsPass !== null);
 const fieldPasses = fieldResults.filter((r) => r.fieldsPass).length;
 writeFileSync(join(outDir, "report.json"), JSON.stringify({ runId, results }, null, 2) + "\n");
 console.log(`\noutcome pass: ${outcomePasses}/${results.length}, field pass: ${fieldPasses}/${fieldResults.length}`);
+if (timeouts > 0) console.log(`${timeouts} run(s) timed out (machine asleep or network down); re-run them before trusting the score`);
 console.log(`report: ${join(outDir, "report.json")}`);
