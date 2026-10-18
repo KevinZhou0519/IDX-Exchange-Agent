@@ -16,6 +16,8 @@ const WORD_NUMBERS = [
 
 const MULTIPLIERS: Record<string, number> = {
   k: 1_000,
+  thousand: 1_000,
+  grand: 1_000,
   m: 1_000_000,
   mil: 1_000_000,
   million: 1_000_000,
@@ -60,4 +62,45 @@ export function parseCount(s: string): number | null {
     if (index >= 0) return index;
   }
   return null;
+}
+
+const AMOUNT_WORDS: Record<string, number> = {
+  a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+};
+
+type AmountToken = { base: number; multiplier: number | null; start: number; end: number };
+
+/**
+ * Every amount in the text, for checking a value against its quote:
+ * "1 to 2 million" → 1M and 2M (a bare number shares the next number's
+ * multiplier across "to", "-", "and", "or"), "under a million", "700 thousand",
+ * "half a million". Word numbers only count when a multiplier follows them.
+ */
+export function parseAmounts(s: string): number[] {
+  const text = s.toLowerCase().replace(/\bhalf an? (million|mil|m|billion)\b/g, "0.5 $1");
+  const tokens: AmountToken[] = [];
+  const pattern = /(\d[\d,]*(?:\.\d+)?|\b(?:an?|one|two|three|four|five|six|seven|eight|nine|ten)\b)\s*([a-z]*)/g;
+  for (const match of text.matchAll(pattern)) {
+    const [whole, number, suffix] = match;
+    const multiplier = MULTIPLIERS[suffix] ?? null;
+    const isDigits = /^\d/.test(number);
+    if (!isDigits && multiplier === null) continue;
+    const base = isDigits ? Number(number.replace(/,/g, "")) : AMOUNT_WORDS[number];
+    const start = match.index;
+    // A non-multiplier word after the number ("to", "and") is not part of the amount.
+    const end = start + (multiplier === null ? number.length : whole.length);
+    tokens.push({ base, multiplier, start, end });
+  }
+  const amounts = new Set<number>();
+  tokens.forEach((token, i) => {
+    amounts.add(Math.round(token.base * (token.multiplier ?? 1)));
+    const next = tokens[i + 1];
+    if (token.multiplier === null && next?.multiplier != null) {
+      const between = text.slice(token.end, next.start);
+      if (/^\s*(?:-|–|to|and|or)\s*\$?\s*$/.test(between)) {
+        amounts.add(Math.round(token.base * next.multiplier));
+      }
+    }
+  });
+  return [...amounts];
 }

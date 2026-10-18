@@ -527,8 +527,8 @@
       ],
       "types": [
         {
-          "value": "home",
-          "evidence": "home"
+          "value": "family home",
+          "evidence": "family home"
         }
       ],
       "wishes": "near good schools"
@@ -857,17 +857,16 @@
       }
     },
     "expect": {
-      "outcome": "needs_retry",
+      "outcome": "ambiguous",
       "issueKinds": [
-        "implausible"
+        "rental"
       ]
     },
     "agent": {
       "outcomes": [
-        "ok",
         "ambiguous"
       ],
-      "note": "monthly rent is not a sale price: dropped or asked about"
+      "note": "rental: explain the listings are for sale"
     }
   },
   {
@@ -907,6 +906,436 @@
         "maxPrice": 1500000
       },
       "note": "a correct model quotes the real words"
+    }
+  },
+  {
+    "id": "q-range-shared-multiplier",
+    "text": "condo in Irvine for 1 to 2 million",
+    "extraction": {
+      "text": "condo in Irvine for 1 to 2 million",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ],
+      "minPrice": {
+        "value": 1000000,
+        "evidence": "1 to 2 million"
+      },
+      "maxPrice": {
+        "value": 2000000,
+        "evidence": "1 to 2 million"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "minPrice": 1000000,
+        "maxPrice": 2000000
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "minPrice": 1000000,
+        "maxPrice": 2000000
+      }
+    }
+  },
+  {
+    "id": "q-range-dash",
+    "text": "townhouse in Pasadena $1-1.5M",
+    "extraction": {
+      "text": "townhouse in Pasadena $1-1.5M",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Pasadena",
+          "evidence": "Pasadena"
+        }
+      ],
+      "types": [
+        {
+          "value": "townhouse",
+          "evidence": "townhouse"
+        }
+      ],
+      "minPrice": {
+        "value": 1000000,
+        "evidence": "$1-1.5M"
+      },
+      "maxPrice": {
+        "value": 1500000,
+        "evidence": "$1-1.5M"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "minPrice": 1000000,
+        "maxPrice": 1500000
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "minPrice": 1000000,
+        "maxPrice": 1500000
+      }
+    }
+  },
+  {
+    "id": "q-under-a-million",
+    "text": "homes in San Diego under a million",
+    "extraction": {
+      "text": "homes in San Diego under a million",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "San Diego",
+          "evidence": "San Diego"
+        }
+      ],
+      "types": [
+        {
+          "value": "homes",
+          "evidence": "homes"
+        }
+      ],
+      "maxPrice": {
+        "value": 1000000,
+        "evidence": "under a million"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "maxPrice": 1000000
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "maxPrice": 1000000
+      }
+    }
+  },
+  {
+    "id": "q-thousand",
+    "text": "condo in Tustin under 700 thousand",
+    "extraction": {
+      "text": "condo in Tustin under 700 thousand",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Tustin",
+          "evidence": "Tustin"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ],
+      "maxPrice": {
+        "value": 700000,
+        "evidence": "under 700 thousand"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "maxPrice": 700000,
+        "types": [
+          "Condominium"
+        ]
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "maxPrice": 700000,
+        "types": [
+          "Condominium"
+        ]
+      }
+    }
+  },
+  {
+    "id": "q-city-quote-mismatch",
+    "text": "condo in Tustin",
+    "extraction": {
+      "text": "condo in Tustin",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Tustin"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "needs_retry",
+      "issueKinds": [
+        "evidence_mismatch"
+      ]
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Tustin"
+            ]
+          }
+        ]
+      },
+      "note": "a correct model writes the city it quotes"
+    }
+  },
+  {
+    "id": "q-no-pool",
+    "text": "house in Orange with no pool",
+    "extraction": {
+      "text": "house in Orange with no pool",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Orange",
+          "evidence": "Orange"
+        }
+      ],
+      "types": [
+        {
+          "value": "house",
+          "evidence": "house"
+        }
+      ],
+      "pool": {
+        "value": false,
+        "priority": "must",
+        "evidence": "no pool"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "pool": {
+          "value": false,
+          "priority": "must"
+        }
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "pool": {
+          "value": false
+        }
+      }
+    }
+  },
+  {
+    "id": "q-negated-pool-misread",
+    "text": "house in Orange with no pool",
+    "extraction": {
+      "text": "house in Orange with no pool",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Orange",
+          "evidence": "Orange"
+        }
+      ],
+      "types": [
+        {
+          "value": "house",
+          "evidence": "house"
+        }
+      ],
+      "pool": {
+        "value": true,
+        "priority": "must",
+        "evidence": "no pool"
+      }
+    },
+    "expect": {
+      "outcome": "needs_retry",
+      "issueKinds": [
+        "evidence_mismatch"
+      ]
+    },
+    "agent": {
+      "skip": "duplicate text of q-no-pool; only the simulation can force the misread"
+    }
+  },
+  {
+    "id": "q-rent-high",
+    "text": "place in Irvine for $12,000/month",
+    "extraction": {
+      "text": "place in Irvine for $12,000/month",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "maxPrice": {
+        "value": 12000,
+        "evidence": "$12,000/month"
+      }
+    },
+    "expect": {
+      "outcome": "ambiguous",
+      "issueKinds": [
+        "rental"
+      ]
+    },
+    "agent": {
+      "outcomes": [
+        "ambiguous"
+      ]
+    }
+  },
+  {
+    "id": "q-rent-words",
+    "text": "condo to rent in Irvine",
+    "extraction": {
+      "text": "condo to rent in Irvine",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "ambiguous",
+      "issueKinds": [
+        "rental"
+      ]
+    },
+    "agent": {
+      "outcomes": [
+        "ambiguous"
+      ]
+    }
+  },
+  {
+    "id": "q-hoa-monthly",
+    "text": "condo in Irvine, HOA under $500/month",
+    "extraction": {
+      "text": "condo in Irvine, HOA under $500/month",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "condo"
+        }
+      ],
+      "maxHoa": {
+        "value": 500,
+        "evidence": "HOA under $500/month"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "maxHoa": 500
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "maxHoa": 500
+      }
+    }
+  },
+  {
+    "id": "q-empty-evidence",
+    "text": "\ud83c\udfe0 condo in Irvine",
+    "extraction": {
+      "text": "\ud83c\udfe0 condo in Irvine",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "types": [
+        {
+          "value": "condo",
+          "evidence": "\ud83c\udfe0"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "needs_retry",
+      "issueKinds": [
+        "evidence_mismatch"
+      ]
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "types": [
+          "Condominium"
+        ]
+      },
+      "note": "a correct model quotes the word"
     }
   }
 ]

@@ -48,6 +48,16 @@ export default definePluginEntry({
     // The build copies the vocabulary next to the bundle (dist/data/vocab.json).
     // Loaded once at startup; throws with the command to run if it is missing.
     const vocabPath = fileURLToPath(new URL("./data/vocab.json", import.meta.url));
-    api.registerTool(createParseTool(loadVocabulary(vocabPath)));
+    let vocab: Vocabulary;
+    try {
+      vocab = loadVocabulary(vocabPath);
+    } catch (error) {
+      throw new Error(
+        `IDX agent: dataset vocabulary missing at ${vocabPath}. From the IDX-Exchange-Agent repo run ` +
+          "`corepack pnpm vocab && corepack pnpm build:plugin`, then restart the gateway.",
+        { cause: error },
+      );
+    }
+    api.registerTool(createParseTool(vocab));
   },
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeText, parseAmount, parseCount } from "../src/index.ts";
+import { normalizeText, parseAmount, parseAmounts, parseCount } from "../src/index.ts";
 
 describe("normalizeText", () => {
   it.each([
@@ -51,5 +51,25 @@ describe("parseCount", () => {
 
   it("returns null for vague quantities", () => {
     expect(parseCount("a few")).toBeNull();
+  });
+});
+
+describe("parseAmounts", () => {
+  it.each([
+    ["1 to 2 million", [1_000_000, 2_000_000]],
+    ["$1-1.5M", [1_000_000, 1_500_000]],
+    ["between 800 and 900k", [800_000, 900_000]],
+    ["700 thousand", [700_000]],
+    ["50 grand", [50_000]],
+    ["under a million", [1_000_000]],
+    ["two million", [2_000_000]],
+    ["half a million", [500_000]],
+    ["under $1.5M", [1_500_000]],
+  ])("finds the amounts in %j", (input, expected) => {
+    for (const amount of expected) expect(parseAmounts(input)).toContain(amount);
+  });
+
+  it("ignores words that are not amounts", () => {
+    expect(parseAmounts("a condo with a pool")).toEqual([]);
   });
 });

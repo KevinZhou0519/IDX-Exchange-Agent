@@ -20,10 +20,14 @@ Call `parse_property_query` once with `attempt: 1`:
   values whose evidence is not in the message.
 - Cities and property types: write them as the user wrote them, typos included.
   The tool matches them against the real MLS data.
-- Prices are plain dollars (`1500000` for "$1.5M"). Monthly rent is not a sale
-  price.
+- Prices are plain dollars (`1500000` for "$1.5M"). For a range like "1 to 2
+  million", use the whole phrase as the evidence for both `minPrice` and
+  `maxPrice`. Monthly rent is not a sale price.
 - `pool` / `view`: `priority: "must"` for "with a pool", `"nice"` for "ideally a
   pool" or "would like a view".
+- `types` only for a kind of property the user named: condo, townhouse,
+  house, family home, single-family, duplex... Generic words alone ("homes",
+  "a place", "property") mean any type: leave `types` out.
 - "Not a condo" goes in `excludeTypes`. Wishes no field covers ("near good
   schools", "quiet street") go in `wishes`.
 
@@ -67,8 +71,11 @@ describe filters, corrections or listing counts the tool did not return.
   field the user asked for: never drop a city, price or other filter to make
   an issue go away. If you cannot fix it, send it unchanged so the tool returns
   `ambiguous`, then ask the user about it.
-- **`ambiguous`**: ask one specific question built from `issues[].candidates`,
-  listing at most three options with their listing counts.
+- **`ambiguous`**: if an issue has `kind: "rental"`, explain that the listings
+  are homes for sale and ask whether they want to buy instead. Otherwise ask one
+  specific question built from `issues[].candidates` (at most three options,
+  with listing counts), or, when an issue has no candidates, about the value
+  it quotes.
 
 If the tool call itself fails (an error instead of a result), do not guess.
 Tell the user you could not process the search and ask them to rephrase it.

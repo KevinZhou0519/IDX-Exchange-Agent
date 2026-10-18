@@ -25,4 +25,11 @@ describe("ExtractionSchema", () => {
       }),
     ).toBe(false);
   });
+
+  it("rejects unknown field names instead of silently dropping them", () => {
+    expect(Value.Check(ExtractionSchema, { ...handbookExtraction, minSquareFeet: { value: 1800, evidence: "1,800 sq ft" } })).toBe(false);
+    expect(
+      Value.Check(ExtractionSchema, { ...handbookExtraction, minBeds: { value: 3, evidence: "3br", note: "x" } }),
+    ).toBe(false);
+  });
 });

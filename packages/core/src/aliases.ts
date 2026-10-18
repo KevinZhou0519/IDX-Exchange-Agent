@@ -22,8 +22,6 @@ export const TYPE_SYNONYMS: Record<string, string> = {
   "town house": "Townhouse",
   "house": "SingleFamilyResidence",
   "houses": "SingleFamilyResidence",
-  "home": "SingleFamilyResidence",
-  "homes": "SingleFamilyResidence",
   "single family": "SingleFamilyResidence",
   "single-family": "SingleFamilyResidence",
   "single family home": "SingleFamilyResidence",
@@ -35,3 +33,9 @@ export const TYPE_SYNONYMS: Record<string, string> = {
   "manufactured": "ManufacturedOnLand",
   "mobile home": "ManufacturedOnLand",
 };
+
+/** Words for "any property": they set no type filter ("homes in Irvine" includes condos). */
+export const GENERIC_TYPE_WORDS = new Set([
+  "home", "homes", "place", "places", "property", "properties", "listing", "listings",
+  "real estate", "somewhere", "something",
+]);

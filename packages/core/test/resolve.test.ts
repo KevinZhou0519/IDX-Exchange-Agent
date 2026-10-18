@@ -48,3 +48,74 @@ describe("resolveExtraction", () => {
     expect(result.issues).toEqual([expect.objectContaining({ field: "maxPrice", kind: "implausible" })]);
   });
 });
+
+describe("resolveExtraction review fixes", () => {
+  const base = { attempt: 1 as const };
+
+  it("rejects a city whose quote names a different city", () => {
+    const result = resolveExtraction({ ...base, text: "condo in Tustin", cities: [{ value: "Irvine", evidence: "Tustin" }] }, fixtureVocab);
+    expect(result.outcome).toBe("needs_retry");
+    expect(result.issues).toEqual([expect.objectContaining({ field: "cities", kind: "evidence_mismatch" })]);
+    expect(result.filters.cities).toBeUndefined();
+  });
+
+  it("rejects pool required when the quote says no pool", () => {
+    const result = resolveExtraction(
+      { ...base, text: "house in Orange with no pool", pool: { value: true, priority: "must", evidence: "no pool" } },
+      fixtureVocab,
+    );
+    expect(result.issues).toEqual([expect.objectContaining({ field: "pool", kind: "evidence_mismatch" })]);
+  });
+
+  it("flags a monthly price as a rental, whatever the amount", () => {
+    const result = resolveExtraction(
+      { ...base, text: "place in Irvine for $12,000/month", cities: [{ value: "Irvine", evidence: "Irvine" }], maxPrice: { value: 12_000, evidence: "$12,000/month" } },
+      fixtureVocab,
+    );
+    expect(result.outcome).toBe("ambiguous");
+    expect(result.issues.map((issue) => issue.kind)).toEqual(["rental"]);
+    expect(result.filters.maxPrice).toBeUndefined();
+  });
+
+  it("flags rental wording even without a price", () => {
+    const result = resolveExtraction({ ...base, text: "condo to rent in Irvine", cities: [{ value: "Irvine", evidence: "Irvine" }] }, fixtureVocab);
+    expect(result.outcome).toBe("ambiguous");
+    expect(result.issues.map((issue) => issue.kind)).toEqual(["rental"]);
+  });
+
+  it("does not treat a monthly HOA fee as a rental", () => {
+    const result = resolveExtraction(
+      { ...base, text: "condo in Irvine, HOA under $500/month", cities: [{ value: "Irvine", evidence: "Irvine" }], maxHoa: { value: 500, evidence: "HOA under $500/month" } },
+      fixtureVocab,
+    );
+    expect(result.outcome).toBe("ok");
+    expect(result.filters.maxHoa).toBe(500);
+  });
+
+  it("treats generic words like homes as no type filter", () => {
+    const result = resolveExtraction(
+      { ...base, text: "homes in Irvine under $1M", cities: [{ value: "Irvine", evidence: "Irvine" }], types: [{ value: "homes", evidence: "homes" }], maxPrice: { value: 1_000_000, evidence: "under $1M" } },
+      fixtureVocab,
+    );
+    expect(result.outcome).toBe("ok");
+    expect(result.filters.types).toBeUndefined();
+    expect(result.issues).toEqual([]);
+  });
+
+  it("still maps house and family home to single-family residences", () => {
+    const result = resolveExtraction(
+      { ...base, text: "family home or house in Irvine", types: [{ value: "family home", evidence: "family home" }, { value: "house", evidence: "house" }] },
+      fixtureVocab,
+    );
+    expect(result.filters.types).toEqual(["SingleFamilyResidence", "SingleFamilyResidence"]);
+  });
+
+  it("tells the model to quote the whole price phrase when a quote is partial", () => {
+    const result = resolveExtraction(
+      { ...base, text: "condo in Irvine for 1 to 2 million", minPrice: { value: 1_000_000, evidence: "1 to" }, maxPrice: { value: 2_000_000, evidence: "2 million" } },
+      fixtureVocab,
+    );
+    expect(result.outcome).toBe("needs_retry");
+    expect(result.issues[0].message).toMatch(/quote the whole price phrase/i);
+  });
+});

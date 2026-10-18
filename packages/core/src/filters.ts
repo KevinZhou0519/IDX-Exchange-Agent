@@ -2,27 +2,41 @@
 // input) and the validated, dataset-matched result the rest of the system uses.
 import { Type, type Static } from "typebox";
 
+// Unknown fields are rejected, not ignored: a model that writes
+// "minSquareFeet" must get an error listing the real names, rather than
+// having that filter silently dropped.
+const strict = { additionalProperties: false } as const;
+
 /** The user's own words that a value was read from. Must appear in the message. */
 export const Evidence = Type.String({
   minLength: 1,
   description: "The exact words from the user's message this value came from, copied verbatim",
 });
 
-const NumberField = Type.Object({
-  value: Type.Number({ description: "Number as a plain value, e.g. 1500000 for $1.5M" }),
-  evidence: Evidence,
-});
-const StringItem = Type.Object({
-  value: Type.String({ minLength: 1, description: "The user's word as written (typos included); the tool matches it to the data" }),
-  evidence: Evidence,
-});
-const FeatureField = Type.Object({
-  value: Type.Boolean(),
-  priority: Type.Union([Type.Literal("must"), Type.Literal("nice")], {
-    description: '"must" for a requirement ("with a pool"), "nice" for a preference ("ideally a pool")',
-  }),
-  evidence: Evidence,
-});
+const NumberField = Type.Object(
+  {
+    value: Type.Number({ description: "Number as a plain value, e.g. 1500000 for $1.5M" }),
+    evidence: Evidence,
+  },
+  strict,
+);
+const StringItem = Type.Object(
+  {
+    value: Type.String({ minLength: 1, description: "The user's word as written (typos included); the tool matches it to the data" }),
+    evidence: Evidence,
+  },
+  strict,
+);
+const FeatureField = Type.Object(
+  {
+    value: Type.Boolean(),
+    priority: Type.Union([Type.Literal("must"), Type.Literal("nice")], {
+      description: '"must" for a requirement ("with a pool"), "nice" for a preference ("ideally a pool")',
+    }),
+    evidence: Evidence,
+  },
+  strict,
+);
 
 export const ExtractionSchema = Type.Object({
   text: Type.String({ minLength: 1, description: "The user's message, verbatim" }),
@@ -49,7 +63,7 @@ export const ExtractionSchema = Type.Object({
   wishes: Type.Optional(
     Type.String({ description: "Anything the user wants that the fields above cannot express, e.g. \"near good schools\"" }),
   ),
-});
+}, strict);
 
 export type Extraction = Static<typeof ExtractionSchema>;
 
@@ -82,7 +96,8 @@ export type IssueKind =
   | "evidence_mismatch"
   | "implausible"
   | "low_listings"
-  | "auto_corrected";
+  | "auto_corrected"
+  | "rental";
 
 export type Issue = {
   field: string;
