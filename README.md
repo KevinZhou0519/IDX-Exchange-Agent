@@ -11,8 +11,8 @@ WhatsApp; the agent answers from California MLS data: active listings
 |---|---|---|
 | 0 | Environment setup: OpenClaw, MySQL import, WhatsApp | Done |
 | 1 | OpenClaw architecture fundamentals | Done |
-| 2 | Natural-language property search | Next |
-| 3 | MySQL integration (parameterized queries, pagination) | |
+| 2 | Natural-language property search | Done |
+| 3 | MySQL integration (parameterized queries, pagination) | Next |
 | 4 | Multi-turn conversational search | |
 | 5 | Market statistics from sold comps | |
 | 6 | Embeddings and semantic search | |
@@ -66,7 +66,35 @@ dumps and the `data/` folder.
 ## Repository layout
 
 ```text
+packages/
+  core/                    pure logic, no OpenClaw: filter format, text cleanup,
+                           dataset matching, evidence/plausibility checks, outcomes
+  openclaw-plugin/         OpenClaw adapter: parse_property_query tool + property-search skill
+fixtures/queries.json      test queries with expected results (simulated and real-agent)
+scripts/
+  build-vocab.ts           export cities and property types from MySQL (local only)
+  build-plugin.ts          build the self-contained folder OpenClaw installs
+  link-openclaw.sh         link the local OpenClaw SDK for tests
+  eval-llm.ts              run every test query through the real agent and score it
 .env.example               environment variables the agent needs
 ```
 
-Skills, plugin tools and scripts are added from Week 2 onward.
+## Development
+
+Requires Node 24.16+ and an OpenClaw checkout at `~/Developer/openclaw`
+(override with `OPENCLAW_DIR`).
+
+| Command | What it does |
+|---|---|
+| `corepack pnpm install` | Install dependencies and link the OpenClaw SDK |
+| `corepack pnpm test` | Unit tests (no database, no model calls) |
+| `corepack pnpm typecheck` | TypeScript check |
+| `corepack pnpm vocab` | Export the dataset vocabulary from MySQL into `packages/core/data/` (gitignored) |
+| `corepack pnpm build:plugin` | Build `packages/openclaw-plugin/dist`; restart the gateway afterwards |
+| `corepack pnpm eval` | Score the real agent on every test query (gateway stopped, lid open) |
+
+Install the plugin once (from the OpenClaw checkout):
+
+```bash
+corepack pnpm openclaw plugins install --link "<repo>/packages/openclaw-plugin/dist"
+```
