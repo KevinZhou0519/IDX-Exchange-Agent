@@ -1,0 +1,10 @@
+packages:
+  - "packages/*"
+
+# The plugin's `openclaw` peer is the user's local OpenClaw checkout, linked by
+# scripts/link-openclaw.sh. Never let pnpm download a second copy of the host.
+autoInstallPeers: false
+
+# esbuild (via vitest) ships prebuilt binaries; its install script is not needed.
+allowBuilds:
+  esbuild: false

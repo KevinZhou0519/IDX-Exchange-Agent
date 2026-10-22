@@ -1,0 +1,97 @@
+{
+  "generatedAt": "fixture",
+  "cities": [
+    {
+      "name": "Irvine",
+      "activeListings": 723,
+      "soldCount": 0
+    },
+    {
+      "name": "Arvin",
+      "activeListings": 3,
+      "soldCount": 0
+    },
+    {
+      "name": "Newport Beach",
+      "activeListings": 230,
+      "soldCount": 0
+    },
+    {
+      "name": "Newport Coast",
+      "activeListings": 49,
+      "soldCount": 0
+    },
+    {
+      "name": "29 Palms",
+      "activeListings": 213,
+      "soldCount": 0
+    },
+    {
+      "name": "Twentynine Palms",
+      "activeListings": 7,
+      "soldCount": 0
+    },
+    {
+      "name": "Los Angeles",
+      "activeListings": 4015,
+      "soldCount": 0
+    },
+    {
+      "name": "Silver Lake",
+      "activeListings": 3,
+      "soldCount": 0
+    },
+    {
+      "name": "San Diego",
+      "activeListings": 2198,
+      "soldCount": 0
+    },
+    {
+      "name": "Pasadena",
+      "activeListings": 316,
+      "soldCount": 0
+    },
+    {
+      "name": "Gardena",
+      "activeListings": 73,
+      "soldCount": 0
+    },
+    {
+      "name": "Rancho Cucamonga",
+      "activeListings": 257,
+      "soldCount": 0
+    },
+    {
+      "name": "Orange",
+      "activeListings": 174,
+      "soldCount": 0
+    },
+    {
+      "name": "Tustin",
+      "activeListings": 101,
+      "soldCount": 0
+    }
+  ],
+  "types": [
+    {
+      "name": "SingleFamilyResidence",
+      "activeListings": 37561
+    },
+    {
+      "name": "Condominium",
+      "activeListings": 11820
+    },
+    {
+      "name": "Townhouse",
+      "activeListings": 3193
+    },
+    {
+      "name": "Duplex",
+      "activeListings": 465
+    },
+    {
+      "name": "ManufacturedOnLand",
+      "activeListings": 1003
+    }
+  ]
+}

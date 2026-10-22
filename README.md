@@ -5,16 +5,14 @@ during the IDX Exchange AI Agentic Engineer internship. Users ask questions over
 WhatsApp; the agent answers from California MLS data: active listings
 (`rets_property`) and sold comps (`california_sold`) in MySQL.
 
-**Architecture and workflow diagrams:** [docs/architecture.md](docs/architecture.md)
-
 ## Progress
 
 | Week | Focus | Status |
 |---|---|---|
-| 0 | Environment setup: OpenClaw, MySQL import, WhatsApp | Done ([notes](docs/weekly/week-00-setup.md)) |
-| 1 | OpenClaw architecture fundamentals | Done ([notes](docs/weekly/week-01-architecture.md)) |
-| 2 | Natural-language property search | Next |
-| 3 | MySQL integration (parameterized queries, pagination) | |
+| 0 | Environment setup: OpenClaw, MySQL import, WhatsApp | Done |
+| 1 | OpenClaw architecture fundamentals | Done |
+| 2 | Natural-language property search | Done |
+| 3 | MySQL integration (parameterized queries, pagination) | Next |
 | 4 | Multi-turn conversational search | |
 | 5 | Market statistics from sold comps | |
 | 6 | Embeddings and semantic search | |
@@ -32,9 +30,6 @@ WhatsApp → OpenClaw Gateway → session → agent loop
          → model picks a skill → skill calls a typed tool
          → parameterized SQL on MySQL → reply over WhatsApp
 ```
-
-The full flow, component table and design decisions are in
-[docs/architecture.md](docs/architecture.md).
 
 ## Running it locally
 
@@ -62,8 +57,6 @@ Prerequisites: Node 24.16+, pnpm (via corepack), MySQL 8.4, Python 3.12.
    ```
 5. Link WhatsApp: `corepack pnpm openclaw channels login --channel whatsapp`
 
-Setup problems and fixes: [docs/weekly/week-00-setup.md](docs/weekly/week-00-setup.md).
-
 ## Data
 
 The MLS data is licensed CRMLS data supplied by IDX Exchange. It is **not** in
@@ -73,10 +66,35 @@ dumps and the `data/` folder.
 ## Repository layout
 
 ```text
-docs/
-  architecture.md          system and sequence diagrams, design decisions
-  weekly/                  one progress note per week
+packages/
+  core/                    pure logic, no OpenClaw: filter format, text cleanup,
+                           dataset matching, evidence/plausibility checks, outcomes
+  openclaw-plugin/         OpenClaw adapter: parse_property_query tool + property-search skill
+fixtures/queries.json      test queries with expected results (simulated and real-agent)
+scripts/
+  build-vocab.ts           export cities and property types from MySQL (local only)
+  build-plugin.ts          build the self-contained folder OpenClaw installs
+  link-openclaw.sh         link the local OpenClaw SDK for tests
+  eval-llm.ts              run every test query through the real agent and score it
 .env.example               environment variables the agent needs
 ```
 
-Skills, plugin tools and scripts are added from Week 2 onward.
+## Development
+
+Requires Node 24.16+ and an OpenClaw checkout at `~/Developer/openclaw`
+(override with `OPENCLAW_DIR`).
+
+| Command | What it does |
+|---|---|
+| `corepack pnpm install` | Install dependencies and link the OpenClaw SDK |
+| `corepack pnpm test` | Unit tests (no database, no model calls) |
+| `corepack pnpm typecheck` | TypeScript check |
+| `corepack pnpm vocab` | Export the dataset vocabulary from MySQL into `packages/core/data/` (gitignored) |
+| `corepack pnpm build:plugin` | Build `packages/openclaw-plugin/dist`; restart the gateway afterwards |
+| `corepack pnpm eval` | Score the real agent on every test query (gateway stopped, lid open) |
+
+Install the plugin once (from the OpenClaw checkout):
+
+```bash
+corepack pnpm openclaw plugins install --link "<repo>/packages/openclaw-plugin/dist"
+```

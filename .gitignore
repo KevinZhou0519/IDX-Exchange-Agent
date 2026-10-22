@@ -28,3 +28,10 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Generated dataset vocabulary and eval output
+packages/core/data/
+eval-logs/
+
+# RStudio
+.Rhistory
