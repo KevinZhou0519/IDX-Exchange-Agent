@@ -17,7 +17,7 @@
       },
       "types": [
         {
-          "value": "condos",
+          "value": "Condominium",
           "evidence": "condos"
         }
       ],
@@ -97,7 +97,7 @@
       },
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ],
@@ -151,12 +151,6 @@
           "value": "irvin",
           "evidence": "irvin"
         }
-      ],
-      "types": [
-        {
-          "value": "homes",
-          "evidence": "homes"
-        }
       ]
     },
     "expect": {
@@ -185,7 +179,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ],
@@ -240,7 +234,7 @@
       ],
       "types": [
         {
-          "value": "house",
+          "value": "SingleFamilyResidence",
           "evidence": "house"
         }
       ]
@@ -387,7 +381,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ],
@@ -432,13 +426,13 @@
       ],
       "types": [
         {
-          "value": "house",
+          "value": "SingleFamilyResidence",
           "evidence": "house"
         }
       ],
       "excludeTypes": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ]
@@ -527,7 +521,7 @@
       ],
       "types": [
         {
-          "value": "family home",
+          "value": "SingleFamilyResidence",
           "evidence": "family home"
         }
       ],
@@ -569,7 +563,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ],
@@ -685,7 +679,7 @@
       ],
       "types": [
         {
-          "value": "house",
+          "value": "SingleFamilyResidence",
           "evidence": "house"
         }
       ],
@@ -718,12 +712,6 @@
           "value": "Gotham",
           "evidence": "Gotham"
         }
-      ],
-      "types": [
-        {
-          "value": "homes",
-          "evidence": "homes"
-        }
       ]
     },
     "expect": {
@@ -749,12 +737,6 @@
         {
           "value": "Gotham",
           "evidence": "Gotham"
-        }
-      ],
-      "types": [
-        {
-          "value": "homes",
-          "evidence": "homes"
         }
       ]
     },
@@ -786,7 +768,7 @@
       ],
       "types": [
         {
-          "value": "townhouse",
+          "value": "Townhouse",
           "evidence": "townhouse"
         }
       ],
@@ -883,7 +865,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ],
@@ -922,7 +904,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ],
@@ -967,7 +949,7 @@
       ],
       "types": [
         {
-          "value": "townhouse",
+          "value": "Townhouse",
           "evidence": "townhouse"
         }
       ],
@@ -1010,12 +992,6 @@
           "evidence": "San Diego"
         }
       ],
-      "types": [
-        {
-          "value": "homes",
-          "evidence": "homes"
-        }
-      ],
       "maxPrice": {
         "value": 1000000,
         "evidence": "under a million"
@@ -1051,7 +1027,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ],
@@ -1096,7 +1072,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ]
@@ -1137,7 +1113,7 @@
       ],
       "types": [
         {
-          "value": "house",
+          "value": "SingleFamilyResidence",
           "evidence": "house"
         }
       ],
@@ -1182,7 +1158,7 @@
       ],
       "types": [
         {
-          "value": "house",
+          "value": "SingleFamilyResidence",
           "evidence": "house"
         }
       ],
@@ -1245,7 +1221,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ]
@@ -1276,7 +1252,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "condo"
         }
       ],
@@ -1315,7 +1291,7 @@
       ],
       "types": [
         {
-          "value": "condo",
+          "value": "Condominium",
           "evidence": "\ud83c\udfe0"
         }
       ]
@@ -1336,6 +1312,221 @@
         ]
       },
       "note": "a correct model quotes the word"
+    }
+  },
+  {
+    "id": "q-half-baths",
+    "text": "Pasadena, 2 and a half baths",
+    "extraction": {
+      "text": "Pasadena, 2 and a half baths",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Pasadena",
+          "evidence": "Pasadena"
+        }
+      ],
+      "minBaths": {
+        "value": 2.5,
+        "evidence": "2 and a half baths"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "minBaths": 2.5
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "minBaths": 2.5
+      }
+    }
+  },
+  {
+    "id": "q-half-symbol",
+    "text": "condo in Irvine with 2\u00bd baths",
+    "extraction": {
+      "text": "condo in Irvine with 2\u00bd baths",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Irvine",
+          "evidence": "Irvine"
+        }
+      ],
+      "types": [
+        {
+          "value": "Condominium",
+          "evidence": "condo"
+        }
+      ],
+      "minBaths": {
+        "value": 2.5,
+        "evidence": "2\u00bd baths"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "minBaths": 2.5,
+        "types": [
+          "Condominium"
+        ]
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "minBaths": 2.5,
+        "types": [
+          "Condominium"
+        ]
+      }
+    }
+  },
+  {
+    "id": "q-studio",
+    "text": "studio in San Diego under 500k",
+    "extraction": {
+      "text": "studio in San Diego under 500k",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "San Diego",
+          "evidence": "San Diego"
+        }
+      ],
+      "minBeds": {
+        "value": 0,
+        "evidence": "studio"
+      },
+      "maxPrice": {
+        "value": 500000,
+        "evidence": "under 500k"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "minBeds": 0,
+        "maxPrice": 500000
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "minBeds": 0,
+        "maxPrice": 500000
+      }
+    }
+  },
+  {
+    "id": "q-bed-bath-slash",
+    "text": "3/2 house in Orange",
+    "extraction": {
+      "text": "3/2 house in Orange",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Orange",
+          "evidence": "Orange"
+        }
+      ],
+      "types": [
+        {
+          "value": "SingleFamilyResidence",
+          "evidence": "house"
+        }
+      ],
+      "minBeds": {
+        "value": 3,
+        "evidence": "3/2"
+      },
+      "minBaths": {
+        "value": 2,
+        "evidence": "3/2"
+      }
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "minBeds": 3,
+        "minBaths": 2,
+        "types": [
+          "SingleFamilyResidence"
+        ]
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "minBeds": 3,
+        "minBaths": 2,
+        "types": [
+          "SingleFamilyResidence"
+        ]
+      }
+    }
+  },
+  {
+    "id": "q-capitalized-abbrev",
+    "text": "townhouse in newport bch",
+    "extraction": {
+      "text": "townhouse in newport bch",
+      "attempt": 1,
+      "cities": [
+        {
+          "value": "Newport Bch",
+          "evidence": "newport bch"
+        }
+      ],
+      "types": [
+        {
+          "value": "Townhouse",
+          "evidence": "townhouse"
+        }
+      ]
+    },
+    "expect": {
+      "outcome": "ok",
+      "issueKinds": [],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Newport Beach"
+            ]
+          }
+        ]
+      }
+    },
+    "agent": {
+      "outcomes": [
+        "ok"
+      ],
+      "filters": {
+        "cities": [
+          {
+            "values": [
+              "Newport Beach"
+            ]
+          }
+        ]
+      }
     }
   }
 ]

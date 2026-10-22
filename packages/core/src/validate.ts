@@ -8,6 +8,7 @@ export type EvidenceCheck = "ok" | "not_in_message" | "value_mismatch";
 export type EvidenceKind = "amount" | "count" | "word" | "feature";
 
 const NEGATION = /\b(no|not|without|non)\b/;
+const UNVERIFIABLE_COUNT = /half|½|¼|¾|\/|studio/i;
 
 /** Whole-word containment of normalized text: "vine" is not in "irvine condo". */
 function containsWords(haystack: string, needle: string): boolean {
@@ -27,6 +28,10 @@ export function checkEvidence(
     case "amount":
       return parseAmounts(evidence).includes(value as number) ? "ok" : "value_mismatch";
     case "count":
+      // Phrasings the reader cannot verify ("2 and a half", "2½", "3/2",
+      // "studio") are trusted to the model; the value's format and range
+      // are still checked. Plain counts it can read must agree.
+      if (UNVERIFIABLE_COUNT.test(evidence)) return "ok";
       return parseCount(evidence) === value ? "ok" : "value_mismatch";
     case "word":
       return containsWords(quote, normalizeText(String(value))) ? "ok" : "value_mismatch";

@@ -1,6 +1,6 @@
 // Matches a user's word to real dataset values: exact name, alias table, then
 // typo tolerance. Ties are reported, never guessed.
-import { CITY_ALIASES, TYPE_SYNONYMS } from "./aliases.ts";
+import { CITY_ALIASES } from "./aliases.ts";
 import { normalizeText } from "./normalize.ts";
 import type { Vocabulary } from "./vocab.ts";
 
@@ -85,12 +85,4 @@ function matchAgainst(
 export function matchCity(input: string, vocab: Vocabulary): MatchResult {
   const entries = vocab.cities.map((city) => ({ value: city.name, activeListings: city.activeListings }));
   return matchAgainst(input, entries, CITY_ALIASES);
-}
-
-export function matchType(input: string, vocab: Vocabulary): MatchResult {
-  const entries = vocab.types.map((type) => ({ value: type.name, activeListings: type.activeListings }));
-  const synonyms = Object.fromEntries(
-    Object.entries(TYPE_SYNONYMS).map(([word, type]) => [word, [type]]),
-  );
-  return matchAgainst(input, entries, synonyms);
 }

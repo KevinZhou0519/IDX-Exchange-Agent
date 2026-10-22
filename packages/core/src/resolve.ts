@@ -9,9 +9,7 @@ import type {
   ResolvedFilters,
   ResolveResult,
 } from "./filters.ts";
-import { GENERIC_TYPE_WORDS } from "./aliases.ts";
-import { matchCity, matchType, type MatchResult } from "./match.ts";
-import { normalizeText } from "./normalize.ts";
+import { matchCity, type MatchResult } from "./match.ts";
 import { checkEvidence, checkPlausible, type PLAUSIBLE } from "./validate.ts";
 import type { Vocabulary } from "./vocab.ts";
 
@@ -170,18 +168,15 @@ export function resolveExtraction(input: Extraction, vocab: Vocabulary): Resolve
     if (!items?.length) continue;
     markSource(field);
     for (const item of items) {
-      if (GENERIC_TYPE_WORDS.has(normalizeText(item.value))) continue;
-      const evidence = checkEvidence(text, item.evidence, item.value, "word");
+      // The schema already limits the value to a dataset type name; the quote
+      // only has to be the user's own words.
+      const evidence = checkEvidence(text, item.evidence);
       if (evidence !== "ok") {
         issues.push(evidenceIssue(field, item.value, item.evidence, evidenceReason(evidence, item.value)));
         continue;
       }
-      const match = matchType(item.value, vocab);
-      const issue = matchIssue(field, item.value, match, "property type");
-      if (issue) issues.push(issue);
-      if (match.kind === "exact" || match.kind === "alias" || match.kind === "fuzzy") {
-        (filters[field] ??= []).push(...match.values);
-      }
+      const types = (filters[field] ??= []);
+      if (!types.includes(item.value)) types.push(item.value);
     }
   }
 

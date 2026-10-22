@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { damerauLevenshtein, matchCity, matchType } from "../src/index.ts";
+import { damerauLevenshtein, matchCity } from "../src/index.ts";
 import { fixtureVocab } from "./fixtures/vocab.ts";
 
 describe("damerauLevenshtein", () => {
@@ -52,26 +52,5 @@ describe("matchCity", () => {
 
   it("never fuzzy-matches names of four characters or fewer", () => {
     expect(matchCity("irv", fixtureVocab).kind).toBe("none");
-  });
-});
-
-describe("matchType", () => {
-  it("maps everyday words to dataset types", () => {
-    expect(matchType("condo", fixtureVocab)).toMatchObject({ kind: "alias", values: ["Condominium"] });
-  });
-
-  it.each(["family home", "family homes", "single family home", "single-family homes"])(
-    "maps %j to single-family residences",
-    (word) => {
-      expect(matchType(word, fixtureVocab)).toMatchObject({ kind: "alias", values: ["SingleFamilyResidence"] });
-    },
-  );
-
-  it("matches a dataset type exactly", () => {
-    expect(matchType("Townhouse", fixtureVocab)).toMatchObject({ kind: "exact", values: ["Townhouse"] });
-  });
-
-  it("returns none for an unknown type", () => {
-    expect(matchType("castle", fixtureVocab).kind).toBe("none");
   });
 });

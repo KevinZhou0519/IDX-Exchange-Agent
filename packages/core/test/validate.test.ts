@@ -63,3 +63,20 @@ describe("checkEvidence supports the value", () => {
     expect(checkEvidence("condo without a view", "without a view", true, "feature")).toBe("value_mismatch");
   });
 });
+
+describe("checkEvidence trusts the model when it cannot read a count confidently", () => {
+  it.each([
+    ["2 and a half baths", 2.5],
+    ["2½ baths", 2.5],
+    ["studio", 0],
+    ["3/2", 2],
+  ])("accepts %j as %d", (quote, value) => {
+    expect(checkEvidence(`looking for ${quote} in Irvine`, quote, value, "count")).toBe("ok");
+  });
+
+  it("still catches a count it can read", () => {
+    expect(checkEvidence("3 baths in Irvine", "3 baths", 2, "count")).toBe("value_mismatch");
+    expect(checkEvidence("a few bedrooms in Irvine", "a few bedrooms", 3, "count")).toBe("value_mismatch");
+  });
+});
+

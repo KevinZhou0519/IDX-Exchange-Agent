@@ -18,16 +18,27 @@ Call `parse_property_query` once with `attempt: 1`:
 - `evidence` on every field: the exact words from the message, copied verbatim
   (for "under 1.5 mil", the evidence is `under 1.5 mil`). The tool rejects
   values whose evidence is not in the message.
-- Cities and property types: write them as the user wrote them, typos included.
-  The tool matches them against the real MLS data.
-- Prices are plain dollars (`1500000` for "$1.5M"). For a range like "1 to 2
-  million", use the whole phrase as the evidence for both `minPrice` and
-  `maxPrice`. Monthly rent is not a sale price.
+
+## Output format (matches the MLS data exactly)
+
+| Field | Format | Examples |
+|---|---|---|
+| `cities` | The user's spelling (typos included), each word capitalized | "irivine" → `Irivine`; "newport beach" → `Newport Beach` |
+| `types` / `excludeTypes` | Exactly one dataset type name | condo → `Condominium`; townhome → `Townhouse`; house, family home, single-family → `SingleFamilyResidence`; duplex → `Duplex`; mobile or manufactured home → `ManufacturedOnLand` |
+| `minPrice` / `maxPrice` | Whole dollars, no symbols | "$1.5M" → `1500000`; "800k" → `800000`; "under a million" → `1000000` |
+| `minBeds` | Whole number | "3br" → `3`; "studio" → `0` |
+| `minBaths` | Steps of 0.5 | "2 and a half" or "2½" → `2.5`; "3/2" (beds/baths) → `2` |
+| `minSqft` | Whole number | "1,800 sq ft" → `1800` |
+| `maxHoa` | Whole dollars per month | "HOA under $500" → `500` |
+| `pool` / `view` | `true` / `false` | "no pool" → `false` |
+
+- The tool corrects city typos against the data, so keep the user's spelling.
+- Generic words alone ("homes", "a place", "property") mean any type: leave
+  `types` out. "Studio" means 0 bedrooms, not a type.
+- For a range like "1 to 2 million", use the whole phrase as the evidence for
+  both `minPrice` and `maxPrice`. Monthly rent is not a sale price.
 - `pool` / `view`: `priority: "must"` for "with a pool", `"nice"` for "ideally a
   pool" or "would like a view".
-- `types` only for a kind of property the user named: condo, townhouse,
-  house, family home, single-family, duplex... Generic words alone ("homes",
-  "a place", "property") mean any type: leave `types` out.
 - "Not a condo" goes in `excludeTypes`. Wishes no field covers ("near good
   schools", "quiet street") go in `wishes`.
 
@@ -37,15 +48,15 @@ Use exactly these field names (include only what the user mentioned):
 {
   "text": "<the whole message>",
   "attempt": 1,
-  "cities": [{ "value": "<city as typed>", "evidence": "<exact words>" }],
-  "minPrice": { "value": 0, "evidence": "<exact words>" },
-  "maxPrice": { "value": 0, "evidence": "<exact words>" },
-  "minBeds": { "value": 0, "evidence": "<exact words>" },
-  "minBaths": { "value": 0, "evidence": "<exact words>" },
-  "minSqft": { "value": 0, "evidence": "<exact words>" },
-  "maxHoa": { "value": 0, "evidence": "<exact words>" },
-  "types": [{ "value": "<type as typed>", "evidence": "<exact words>" }],
-  "excludeTypes": [{ "value": "<type as typed>", "evidence": "<exact words>" }],
+  "cities": [{ "value": "Irivine", "evidence": "<exact words>" }],
+  "minPrice": { "value": 800000, "evidence": "<exact words>" },
+  "maxPrice": { "value": 1500000, "evidence": "<exact words>" },
+  "minBeds": { "value": 3, "evidence": "<exact words>" },
+  "minBaths": { "value": 2.5, "evidence": "<exact words>" },
+  "minSqft": { "value": 1800, "evidence": "<exact words>" },
+  "maxHoa": { "value": 500, "evidence": "<exact words>" },
+  "types": [{ "value": "Condominium", "evidence": "<exact words>" }],
+  "excludeTypes": [{ "value": "Townhouse", "evidence": "<exact words>" }],
   "pool": { "value": true, "priority": "must", "evidence": "<exact words>" },
   "view": { "value": true, "priority": "nice", "evidence": "<exact words>" },
   "wishes": "<anything else they want>"

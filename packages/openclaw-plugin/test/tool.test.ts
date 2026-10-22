@@ -8,7 +8,7 @@ const handbookExtraction: Extraction = {
   attempt: 1,
   cities: [{ value: "Irvine", evidence: "Irvine" }],
   minBeds: { value: 3, evidence: "3-bedroom" },
-  types: [{ value: "condos", evidence: "condos" }],
+  types: [{ value: "Condominium", evidence: "condos" }],
   maxPrice: { value: 1_500_000, evidence: "under $1.5M" },
   pool: { value: true, priority: "must", evidence: "with a pool" },
 };

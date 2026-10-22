@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveExtraction, type Extraction } from "../src/index.ts";
+import { Value } from "typebox/value";
+import { ExtractionSchema, resolveExtraction, type Extraction } from "../src/index.ts";
 import { fixtureVocab } from "./fixtures/vocab.ts";
 
 const handbook: Extraction = {
@@ -7,7 +8,7 @@ const handbook: Extraction = {
   attempt: 1,
   cities: [{ value: "Irvine", evidence: "Irvine" }],
   minBeds: { value: 3, evidence: "3-bedroom" },
-  types: [{ value: "condos", evidence: "condos" }],
+  types: [{ value: "Condominium", evidence: "condos" }],
   maxPrice: { value: 1_500_000, evidence: "under $1.5M" },
   pool: { value: true, priority: "must", evidence: "with a pool" },
 };
@@ -27,7 +28,7 @@ describe("resolveExtraction", () => {
 
   it("asks to confirm an auto-corrected city", () => {
     const result = resolveExtraction(
-      { ...handbook, text: "3br condo in irivine", cities: [{ value: "irivine", evidence: "irivine" }], maxPrice: undefined, minBeds: { value: 3, evidence: "3br" }, types: [{ value: "condo", evidence: "condo" }], pool: undefined },
+      { ...handbook, text: "3br condo in irivine", cities: [{ value: "irivine", evidence: "irivine" }], maxPrice: undefined, minBeds: { value: 3, evidence: "3br" }, types: [{ value: "Condominium", evidence: "condo" }], pool: undefined },
       fixtureVocab,
     );
     expect(result.outcome).toBe("needs_confirmation");
@@ -92,22 +93,18 @@ describe("resolveExtraction review fixes", () => {
     expect(result.filters.maxHoa).toBe(500);
   });
 
-  it("treats generic words like homes as no type filter", () => {
-    const result = resolveExtraction(
-      { ...base, text: "homes in Irvine under $1M", cities: [{ value: "Irvine", evidence: "Irvine" }], types: [{ value: "homes", evidence: "homes" }], maxPrice: { value: 1_000_000, evidence: "under $1M" } },
-      fixtureVocab,
-    );
-    expect(result.outcome).toBe("ok");
-    expect(result.filters.types).toBeUndefined();
-    expect(result.issues).toEqual([]);
+  it("rejects a generic word in place of a dataset type", () => {
+    // The format contract has the model leave types out for "homes"; the schema
+    // rejects anything that is not one of the dataset's type names.
+    expect(Value.Check(ExtractionSchema, { text: "homes in Irvine", attempt: 1, types: [{ value: "homes", evidence: "homes" }] })).toBe(false);
   });
 
-  it("still maps house and family home to single-family residences", () => {
+  it("keeps each dataset type once when several words map to it", () => {
     const result = resolveExtraction(
-      { ...base, text: "family home or house in Irvine", types: [{ value: "family home", evidence: "family home" }, { value: "house", evidence: "house" }] },
+      { ...base, text: "family home or house in Irvine", types: [{ value: "SingleFamilyResidence", evidence: "family home" }, { value: "SingleFamilyResidence", evidence: "house" }] },
       fixtureVocab,
     );
-    expect(result.filters.types).toEqual(["SingleFamilyResidence", "SingleFamilyResidence"]);
+    expect(result.filters.types).toEqual(["SingleFamilyResidence"]);
   });
 
   it("tells the model to quote the whole price phrase when a quote is partial", () => {
@@ -118,4 +115,26 @@ describe("resolveExtraction review fixes", () => {
     expect(result.outcome).toBe("needs_retry");
     expect(result.issues[0].message).toMatch(/quote the whole price phrase/i);
   });
+
+  it("takes a dataset type name chosen by the model", () => {
+    const result = resolveExtraction(
+      { ...base, text: "condo in Irvine", cities: [{ value: "Irvine", evidence: "Irvine" }], types: [{ value: "Condominium", evidence: "condo" }] },
+      fixtureVocab,
+    );
+    expect(result.outcome).toBe("ok");
+    expect(result.filters.types).toEqual(["Condominium"]);
+  });
+
+  it("matches a capitalized city typed with a typo", () => {
+    const result = resolveExtraction({ ...base, text: "condo in irivine", cities: [{ value: "Irivine", evidence: "irivine" }] }, fixtureVocab);
+    expect(result.outcome).toBe("needs_confirmation");
+    expect(result.filters.cities?.[0].values).toEqual(["Irvine"]);
+  });
+
+  it("reads a studio as zero bedrooms", () => {
+    const result = resolveExtraction({ ...base, text: "studio in Irvine", cities: [{ value: "Irvine", evidence: "Irvine" }], minBeds: { value: 0, evidence: "studio" } }, fixtureVocab);
+    expect(result.outcome).toBe("ok");
+    expect(result.filters.minBeds).toBe(0);
+  });
 });
+

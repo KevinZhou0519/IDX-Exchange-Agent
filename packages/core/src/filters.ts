@@ -13,16 +13,44 @@ export const Evidence = Type.String({
   description: "The exact words from the user's message this value came from, copied verbatim",
 });
 
-const NumberField = Type.Object(
+/** The dataset's property types (rets_property.L_Type_), most common first. */
+export const PROPERTY_TYPES = [
+  "SingleFamilyResidence", "Condominium", "Townhouse", "ManufacturedOnLand", "Duplex", "Cabin",
+  "StockCooperative", "Triplex", "MixedUse", "MobileHome", "Quadruplex", "ManufacturedHome",
+  "BoatSlip", "OwnYourOwn", "CoOwnership", "Farm", "Studio", "Timeshare", "Loft", "DeededParking",
+] as const;
+
+/** A whole number in dataset units: dollars, bedrooms, square feet. */
+const IntField = Type.Object(
   {
-    value: Type.Number({ description: "Number as a plain value, e.g. 1500000 for $1.5M" }),
+    value: Type.Integer({ description: "Whole number, no symbols or units: 1500000 for \"$1.5M\", 3 for \"3br\", 0 for \"studio\"" }),
     evidence: Evidence,
   },
   strict,
 );
-const StringItem = Type.Object(
+const BathsField = Type.Object(
   {
-    value: Type.String({ minLength: 1, description: "The user's word as written (typos included); the tool matches it to the data" }),
+    value: Type.Number({ description: "Bathrooms in steps of 0.5: 2.5 for \"2 and a half\" or \"2½\", 2 for \"3/2\" (beds/baths)" }),
+    evidence: Evidence,
+  },
+  strict,
+);
+const CityItem = Type.Object(
+  {
+    value: Type.String({
+      minLength: 1,
+      description: "City as the user spelled it (typos included), each word capitalized: \"irivine\" → \"Irivine\", \"newport beach\" → \"Newport Beach\"",
+    }),
+    evidence: Evidence,
+  },
+  strict,
+);
+const TypeItem = Type.Object(
+  {
+    value: Type.Enum(PROPERTY_TYPES, {
+        description:
+        "Exactly one dataset type name: condo → Condominium; townhome → Townhouse; house, family home, single-family → SingleFamilyResidence; mobile or manufactured home → ManufacturedOnLand",
+    }),
     evidence: Evidence,
   },
   strict,
@@ -47,16 +75,18 @@ export const ExtractionSchema = Type.Object({
     maximum: 2,
     description: "1 for the first call; 2 only when retrying after outcome needs_retry",
   }),
-  cities: Type.Optional(Type.Array(StringItem, { description: "One entry per city or area mentioned" })),
-  minPrice: Type.Optional(NumberField),
-  maxPrice: Type.Optional(NumberField),
-  minBeds: Type.Optional(NumberField),
-  minBaths: Type.Optional(NumberField),
-  minSqft: Type.Optional(NumberField),
-  maxHoa: Type.Optional(NumberField),
-  types: Type.Optional(Type.Array(StringItem, { description: "Property types wanted, e.g. condo, townhome, house" })),
+  cities: Type.Optional(Type.Array(CityItem, { description: "One entry per city or area mentioned" })),
+  minPrice: Type.Optional(IntField),
+  maxPrice: Type.Optional(IntField),
+  minBeds: Type.Optional(IntField),
+  minBaths: Type.Optional(BathsField),
+  minSqft: Type.Optional(IntField),
+  maxHoa: Type.Optional(IntField),
+  types: Type.Optional(
+    Type.Array(TypeItem, { description: "Property types the user named; leave out for generic words like homes or place" }),
+  ),
   excludeTypes: Type.Optional(
-    Type.Array(StringItem, { description: "Property types ruled out, e.g. \"not a condo\"" }),
+    Type.Array(TypeItem, { description: "Property types ruled out, e.g. \"not a condo\" → Condominium" }),
   ),
   pool: Type.Optional(FeatureField),
   view: Type.Optional(FeatureField),

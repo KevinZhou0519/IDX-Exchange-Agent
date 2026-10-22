@@ -10,7 +10,7 @@ const params: Extraction = {
   text: "condo in Irvine",
   attempt: 1,
   cities: [{ value: "Irvine", evidence: "Irvine" }],
-  types: [{ value: "condo", evidence: "condo" }],
+  types: [{ value: "Condominium", evidence: "condo" }],
 };
 
 afterEach(() => {
