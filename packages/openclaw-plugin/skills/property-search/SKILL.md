@@ -114,7 +114,9 @@ user you could not process it and ask them to rephrase.
 
 ## 4. More results and sold homes
 
-- "More", "next", "show more" → `show_listings` with the next page number
-  (page 2 after the first results, then 3…). Send its text as returned.
+- "More", "next", "show more" → always `show_listings` with the next page
+  number (page 2 after the first results, then 3…), even when you think every
+  result was shown: the tool says when there are no more. Send its text as
+  returned, and do not call any other tool for "more".
 - "What did similar homes sell for?", "recent sales", "comps" →
   `show_sold_comps`. Send its text as returned.

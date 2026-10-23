@@ -1,0 +1,326 @@
+[
+  {
+    "id": "c-handbook",
+    "turns": [
+      {
+        "message": "Find homes in Irvine",
+        "expect": {
+          "tool": "update_search",
+          "next": "ask",
+          "facet": "price",
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "message": "Under $1.2M",
+        "expect": {
+          "next": "ask",
+          "facet": "type",
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "maxPrice": 1200000
+          }
+        }
+      },
+      {
+        "message": "Single family with at least 3 beds",
+        "expect": {
+          "next": "show",
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "maxPrice": 1200000,
+            "types": [
+              "SingleFamilyResidence"
+            ],
+            "minBeds": 3
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "c-direct",
+    "turns": [
+      {
+        "message": "3br condo in Irvine under $1.5M with a pool",
+        "expect": {
+          "next": "show",
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "types": [
+              "Condominium"
+            ],
+            "minBeds": 3,
+            "maxPrice": 1500000,
+            "pool": {
+              "value": true,
+              "priority": "must"
+            }
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "c-more",
+    "turns": [
+      {
+        "message": "4+ bedroom houses in Irvine with a pool under $3M",
+        "expect": {
+          "next": "show",
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "minBeds": 4,
+            "maxPrice": 3000000
+          }
+        }
+      },
+      {
+        "message": "more",
+        "expect": {
+          "tool": "show_listings",
+          "page": 2
+        }
+      },
+      {
+        "message": "more",
+        "expect": {
+          "tool": "show_listings",
+          "page": 3
+        }
+      },
+      {
+        "message": "more",
+        "expect": {
+          "tool": "show_listings",
+          "noMore": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "c-change-budget",
+    "turns": [
+      {
+        "message": "Condos in Irvine under 1 million",
+        "expect": {
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "types": [
+              "Condominium"
+            ],
+            "maxPrice": 1000000
+          }
+        }
+      },
+      {
+        "message": "Actually, go up to 1.3 million",
+        "expect": {
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "types": [
+              "Condominium"
+            ],
+            "maxPrice": 1300000
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "c-forget-pool",
+    "turns": [
+      {
+        "message": "Houses in Tustin with a pool",
+        "expect": {
+          "next": "show",
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Tustin"
+                ]
+              }
+            ],
+            "types": [
+              "SingleFamilyResidence"
+            ],
+            "pool": {
+              "value": true,
+              "priority": "must"
+            }
+          }
+        }
+      },
+      {
+        "message": "Forget the pool",
+        "expect": {
+          "next": "ask",
+          "absent": [
+            "pool"
+          ],
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Tustin"
+                ]
+              }
+            ],
+            "types": [
+              "SingleFamilyResidence"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "c-relax",
+    "turns": [
+      {
+        "message": "5 bedroom condo in Irvine under $500K",
+        "expect": {
+          "next": "relax",
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "types": [
+              "Condominium"
+            ],
+            "minBeds": 5,
+            "maxPrice": 500000
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "c-start-over",
+    "turns": [
+      {
+        "message": "Condos in Irvine",
+        "expect": {
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "types": [
+              "Condominium"
+            ]
+          }
+        }
+      },
+      {
+        "message": "Start over. Houses in Tustin",
+        "expect": {
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Tustin"
+                ]
+              }
+            ],
+            "types": [
+              "SingleFamilyResidence"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "id": "c-comps",
+    "turns": [
+      {
+        "message": "3 bedroom houses in Irvine under $1.2M",
+        "expect": {
+          "next": "show"
+        }
+      },
+      {
+        "message": "What did similar homes sell for recently?",
+        "expect": {
+          "tool": "show_sold_comps",
+          "comps": true
+        }
+      }
+    ]
+  },
+  {
+    "id": "c-city-with-state",
+    "turns": [
+      {
+        "message": "Homes in Irvine, CA under $1.2M",
+        "expect": {
+          "next": "ask",
+          "facet": "type",
+          "saved": {
+            "cities": [
+              {
+                "values": [
+                  "Irvine"
+                ]
+              }
+            ],
+            "maxPrice": 1200000
+          }
+        }
+      }
+    ]
+  }
+]

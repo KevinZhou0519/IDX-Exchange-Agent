@@ -22,7 +22,7 @@ describe("evaluation logging", () => {
     const lines = readFileSync(logPath, "utf8").trim().split("\n").map((line) => JSON.parse(line));
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatchObject({ tool: "update_search", sessionKey: "chat-a", params: { text: "condo in Irvine" }, details: { outcome: "ok" } });
-    expect(lines[1]).toMatchObject({ tool: "show_listings", params: { page: 1 }, details: { total: 3 } });
+    expect(lines[1]).toMatchObject({ tool: "show_listings", params: { page: 1 }, details: { total: 3, text: expect.stringContaining("Showing") } });
   });
 
   it("writes nothing when IDX_EVAL_LOG is unset", async () => {
