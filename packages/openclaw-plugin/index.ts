@@ -75,7 +75,8 @@ export function createTools(deps: SearchDeps, sessionKey: string, messages?: Mes
       parameters: PageSchema,
       async execute(_toolCallId: string, params: { page: number }) {
         const { total, text } = await showListings(deps, sessionKey, params.page);
-        const details = { total, page: params.page };
+        // Code Mode hands the model `details`, not `content`, so the cards go in both.
+        const details = { total, page: params.page, text };
         logForEval("show_listings", sessionKey, params, details);
         return textResult(text, details);
       },
@@ -87,7 +88,7 @@ export function createTools(deps: SearchDeps, sessionKey: string, messages?: Mes
       parameters: NoParams,
       async execute(_toolCallId: string, _params: Record<string, never>) {
         const { summary, text } = await showSoldComps(deps, sessionKey);
-        const details = { summary };
+        const details = { summary, text };
         logForEval("show_sold_comps", sessionKey, {}, details);
         return textResult(text, details);
       },

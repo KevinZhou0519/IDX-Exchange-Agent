@@ -12,7 +12,8 @@
     "postinstall": "bash scripts/link-openclaw.sh || echo \"warning: OpenClaw SDK not linked; plugin tests will fail until it is\"",
     "build:plugin": "node scripts/build-plugin.ts",
     "test:db": "vitest run --config vitest.integration.config.ts",
-    "setup:db": "node scripts/setup-db.ts"
+    "setup:db": "node scripts/setup-db.ts",
+    "eval:chat": "caffeinate -i node scripts/eval-conversation.ts"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

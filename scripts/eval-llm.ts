@@ -11,6 +11,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Outcome, ResolveResult } from "../packages/core/src/index.ts";
+import { matchesSubset } from "./lib/match-subset.ts";
 
 type AgentExpect = { outcomes?: Outcome[]; filters?: Record<string, unknown>; note?: string; skip?: string };
 type Entry = { id: string; text: string; agent: AgentExpect };
@@ -25,24 +26,6 @@ mkdirSync(outDir, { recursive: true });
 const only = new Set(process.argv.slice(2));
 const corpus: Entry[] = JSON.parse(readFileSync(join(repoRoot, "fixtures", "queries.json"), "utf8"));
 const entries = corpus.filter((entry) => !entry.agent.skip && (only.size === 0 || only.has(entry.id)));
-
-/** True when every key in `expected` matches `actual` (arrays element by element). */
-function matchesSubset(actual: unknown, expected: unknown): boolean {
-  if (Array.isArray(expected)) {
-    return (
-      Array.isArray(actual) &&
-      actual.length === expected.length &&
-      expected.every((item, i) => matchesSubset(actual[i], item))
-    );
-  }
-  if (expected && typeof expected === "object") {
-    if (!actual || typeof actual !== "object") return false;
-    return Object.entries(expected).every(([key, value]) =>
-      matchesSubset((actual as Record<string, unknown>)[key], value),
-    );
-  }
-  return actual === expected;
-}
 
 function replyText(stdout: string): string {
   const start = stdout.indexOf("{");

@@ -27,7 +27,8 @@ describe("conversational search tools", () => {
     await createTools(deps, "chat-a").update_search.execute("t1", irvineMessage);
     const page = await createTools(deps, "chat-a").show_listings.execute("t2", { page: 2 });
     expect(page.content[0].text.startsWith("Showing 6–7 of 7")).toBe(true);
-    expect(page.details).toEqual({ total: 7, page: 2 });
+    // In Code Mode the model sees `details`, not `content`: the cards must be there.
+    expect(page.details).toEqual({ total: 7, page: 2, text: page.content[0].text });
   });
 
   it("two sessions do not share searches", async () => {
@@ -42,6 +43,7 @@ describe("conversational search tools", () => {
     await createTools(deps, "chat-a").update_search.execute("t1", irvineMessage);
     const comps = await createTools(deps, "chat-a").show_sold_comps.execute("t3", {});
     expect(comps.content[0].text).toContain("No recent sales found");
+    expect(comps.details.text).toBe(comps.content[0].text);
     expect(deps.queries.at(-1)?.params).toContain("Irvine");
   });
 });
