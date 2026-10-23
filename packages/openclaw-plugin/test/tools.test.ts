@@ -69,3 +69,26 @@ describe("real inbound message", () => {
     expect(messages.latest("chat-b")).toBe("condos in Tustin");
   });
 });
+
+describe("per-result instruction", () => {
+  it("tells the model to ask, not to list, when the next step is ask", async () => {
+    const result = await createTools(fakeDeps(723), "chat-a").update_search.execute("t1", irvineMessage);
+    expect(result.details.next?.action).toBe("ask");
+    expect(result.details.instruction).toMatch(/^Ask the user one question about price/);
+    expect(result.details.instruction).toContain("Do not call show_listings");
+  });
+
+  it("tells the model to send the cards when the next step is show", async () => {
+    const result = await createTools(fakeDeps(3), "chat-a").update_search.execute("t1", irvineMessage);
+    expect(result.details.instruction).toBe("Send `text` to the user exactly as it is, then offer \"more\" or recent sales.");
+  });
+
+  it("has no instruction when the outcome needs a retry or a question about the input", async () => {
+    const result = await createTools(fakeDeps(3), "chat-a").update_search.execute("t1", {
+      text: "homes in Gotham",
+      attempt: 1,
+      cities: [{ value: "Gotham", evidence: "Gotham" }],
+    });
+    expect(result.details.instruction).toBeUndefined();
+  });
+});
