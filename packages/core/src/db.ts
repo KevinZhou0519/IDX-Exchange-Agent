@@ -9,6 +9,9 @@ export type Db = {
   close(): Promise<void>;
 };
 
+/** A search query that takes longer than this fails instead of hanging the chat. */
+export const QUERY_TIMEOUT_MS = 10_000;
+
 export type DbConfig = { host?: string; user?: string; password?: string; database?: string };
 
 export function createDb(config: DbConfig = {}): Db {
@@ -22,7 +25,7 @@ export function createDb(config: DbConfig = {}): Db {
   });
   return {
     async query<T>(q: Sql) {
-      const [rows] = await pool.execute(q.sql, q.params);
+      const [rows] = await pool.execute({ sql: q.sql, values: q.params, timeout: QUERY_TIMEOUT_MS });
       return rows as T[];
     },
     close: () => pool.end(),

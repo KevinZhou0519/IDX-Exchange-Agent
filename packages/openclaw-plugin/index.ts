@@ -19,6 +19,7 @@ import {
   showSoldComps,
   updateSearch,
   type Extraction,
+  type DbConfig,
   type MessageLog,
   type NextAction,
   type SearchDeps,
@@ -76,7 +77,49 @@ export function recordInbound(
   if (sessionKey && event.content) messages.record(sessionKey, event.content);
 }
 
-export function createTools(deps: SearchDeps, sessionKey: string, messages?: MessageLog) {
+const NO_SESSION = {
+  error: "no_session",
+  instruction:
+    "This conversation has no session, so the tool can't keep a search here. Tell the user to search from their WhatsApp chat or the dashboard.",
+} as const;
+
+const UNAVAILABLE = {
+  error: "search_unavailable",
+  instruction: "Tell the user the home search is temporarily unavailable and to try again in a moment. Do not retry now.",
+} as const;
+
+/** Runs a tool body, turning a missing session or a database failure into a plain instruction. */
+async function guarded<T>(sessionKey: string | undefined, body: (key: string) => Promise<{ content: { type: "text"; text: string }[]; details: T }>) {
+  if (!sessionKey) return textResult(NO_SESSION.instruction, NO_SESSION);
+  try {
+    return await body(sessionKey);
+  } catch (error) {
+    // The cause stays in the gateway log, not in the model's context.
+    console.error("[idx-agent] search failed:", error);
+    return textResult(UNAVAILABLE.instruction, UNAVAILABLE);
+  }
+}
+
+/** The plugin always connects as the read-only user, whatever MYSQL_USER says. */
+export function pluginDbConfig(): DbConfig {
+  return {
+    host: process.env.MYSQL_HOST ?? "localhost",
+    user: "idx_user",
+    password: "",
+    database: process.env.MYSQL_DATABASE ?? "idx_exchange",
+  };
+}
+
+/** OpenClaw's default puts every direct message in one session, so different contacts would share a search. */
+export function sessionScopeWarning(config: { session?: { dmScope?: string } }): string | undefined {
+  if ((config.session?.dmScope ?? "main") !== "main") return undefined;
+  return (
+    'idx-agent: session.dmScope is "main", so all direct messages share one saved search. ' +
+    'Set session.dmScope to "per-channel-peer" before more than one person uses the agent.'
+  );
+}
+
+export function createTools(deps: SearchDeps, sessionKey: string | undefined, messages?: MessageLog) {
   return {
     update_search: {
       name: "update_search",
@@ -84,11 +127,13 @@ export function createTools(deps: SearchDeps, sessionKey: string, messages?: Mes
       description: UPDATE_DESCRIPTION,
       parameters: ExtractionSchema,
       async execute(_toolCallId: string, params: Extraction) {
-        const result = await updateSearch(deps, sessionKey, params, messages?.latest(sessionKey));
-        const details = { ...result, instruction: nextInstruction(result.next) };
-        logForEval("update_search", sessionKey, params, details);
-        const { outcome, summary, issues, next, text, instruction } = details;
-        return textResult(JSON.stringify({ outcome, summary, issues, next, text, instruction }), details);
+        return guarded(sessionKey, async (key) => {
+          const result = await updateSearch(deps, key, params, messages?.latest(key));
+          const details = { ...result, instruction: nextInstruction(result.next) };
+          logForEval("update_search", key, params, details);
+          const { outcome, summary, issues, next, text, instruction } = details;
+          return textResult(JSON.stringify({ outcome, summary, issues, next, text, instruction }), details);
+        });
       },
     },
     show_listings: {
@@ -97,15 +142,17 @@ export function createTools(deps: SearchDeps, sessionKey: string, messages?: Mes
       description: "Show a page of property cards for this chat's saved search. Use page 2, 3… when the user asks for more.",
       parameters: PageSchema,
       async execute(_toolCallId: string, params: { page: number }) {
-        const { total, text } = await showListings(deps, sessionKey, params.page);
+        return guarded(sessionKey, async (key) => {
+        const { total, text } = await showListings(deps, key, params.page);
         // Code Mode hands the model `details`, not `content`, so the cards go in both.
         const lastPage = total > 0 && params.page * PAGE_SIZE >= total;
         const instruction = lastPage
           ? `All ${total} results have now been shown. If the user asks for more, tell them that was all and offer to change the search; do not call show_sold_comps unless they ask about sold homes.`
           : undefined;
         const details = { total, page: params.page, text, instruction };
-        logForEval("show_listings", sessionKey, params, details);
+        logForEval("show_listings", key, params, details);
         return textResult(text, details);
+        });
       },
     },
     show_sold_comps: {
@@ -114,10 +161,12 @@ export function createTools(deps: SearchDeps, sessionKey: string, messages?: Mes
       description: "Show what similar homes recently sold for, based on this chat's saved search.",
       parameters: NoParams,
       async execute(_toolCallId: string, _params: Record<string, never>) {
-        const { summary, text } = await showSoldComps(deps, sessionKey);
-        const details = { summary, text };
-        logForEval("show_sold_comps", sessionKey, {}, details);
-        return textResult(text, details);
+        return guarded(sessionKey, async (key) => {
+          const { summary, text } = await showSoldComps(deps, key);
+          const details = { summary, text };
+          logForEval("show_sold_comps", key, {}, details);
+          return textResult(text, details);
+        });
       },
     },
   };
@@ -145,7 +194,9 @@ export default definePluginEntry({
       );
     }
     const stateDir = process.env.IDX_STATE_DIR ?? join(homedir(), ".openclaw", "idx-agent");
-    const db = createDb();
+    const warning = sessionScopeWarning(api.config as { session?: { dmScope?: string } });
+    if (warning) api.logger.warn(warning);
+    const db = createDb(pluginDbConfig());
     const deps: SearchDeps = {
       store: createSqliteStore(join(stateDir, "searches.sqlite")),
       db,
@@ -157,7 +208,7 @@ export default definePluginEntry({
     const messages = createMessageLog();
     api.on("message_received", (event, ctx) => recordInbound(messages, event, ctx));
     for (const name of TOOL_NAMES) {
-      api.registerTool((ctx) => createTools(deps, ctx.sessionKey ?? "default", messages)[name], { name });
+      api.registerTool((ctx) => createTools(deps, ctx.sessionKey, messages)[name], { name });
     }
   },
 });

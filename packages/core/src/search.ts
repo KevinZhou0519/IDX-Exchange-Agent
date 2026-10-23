@@ -41,7 +41,8 @@ export async function updateSearch(
   if (invalid.length) {
     // Misnamed or malformed fields: change nothing, so the retry starts clean.
     const saved = deps.store.get(sessionKey)?.filters ?? { sources: {} };
-    const attempt = Number.isInteger(input.attempt) ? input.attempt : 1;
+    const given = (input as { attempt?: unknown } | null)?.attempt;
+    const attempt = Number.isInteger(given) ? (given as number) : 1;
     return { outcome: decideOutcome(invalid, attempt), attempt, filters: { sources: {} }, issues: invalid, saved, summary: summarize(saved) };
   }
   const resolved = resolveExtraction(realText ? { ...input, text: realText } : input, deps.vocab);
@@ -61,6 +62,8 @@ export async function showListings(
   sessionKey: string,
   page: number,
 ): Promise<{ total: number; text: string }> {
+  // The schema's minimum is not enforced in Code Mode; a bad page would reach SQL as OFFSET.
+  if (!Number.isInteger(page) || page < 1) return { total: 0, text: "Page numbers start at 1 (1 is the first 5 results)." };
   const saved = deps.store.get(sessionKey);
   if (!saved) return { total: 0, text: NO_SEARCH };
   deps.store.save(sessionKey, saved.filters); // activity keeps the search alive

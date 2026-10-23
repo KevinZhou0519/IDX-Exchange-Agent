@@ -157,6 +157,31 @@ describe("input validation", () => {
   });
 });
 
+describe("malformed calls", () => {
+  it.each([
+    ["missing text", { attempt: 1, cities: [irvine] }, "text"],
+    ["missing attempt", { text: "homes in Irvine", cities: [irvine] }, "attempt"],
+    ["not an object", null, "input"],
+  ])("rejects a call with %s instead of crashing", async (_name, input, field) => {
+    const { deps: d } = deps(50);
+    const result = await updateSearch(d, "chat-a", input as never);
+    expect(result.outcome).toBe("needs_retry");
+    expect(result.issues[0]).toMatchObject({ field, kind: "invalid_field" });
+    expect(d.store.get("chat-a")).toBeUndefined();
+  });
+});
+
+describe("page numbers", () => {
+  it.each([0, -1, 1.5, undefined, Number.NaN])("rejects page %s without querying the database", async (page) => {
+    const { deps: d, queries } = deps(7);
+    await updateSearch(d, "chat-a", { text: "homes in Irvine", attempt: 1, cities: [irvine] });
+    const before = queries.length;
+    const result = await showListings(d, "chat-a", page as never);
+    expect(result.text).toBe("Page numbers start at 1 (1 is the first 5 results).");
+    expect(queries.length).toBe(before);
+  });
+});
+
 describe("checking against the real message", () => {
   it("checks quotes against the real message when one is known", async () => {
     const { deps: d } = deps(50);

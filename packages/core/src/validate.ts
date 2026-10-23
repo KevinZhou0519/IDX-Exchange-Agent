@@ -64,15 +64,36 @@ const FIELD_NAMES = Object.keys(ExtractionSchema.properties).join(", ");
  * would otherwise be dropped silently.
  */
 export function validateExtraction(input: unknown): Issue[] {
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return [
+      {
+        field: "input",
+        kind: "invalid_field",
+        input: String(input),
+        message: `The tool input must be an object with at least "text" and "attempt". Fields: ${FIELD_NAMES}.`,
+      },
+    ];
+  }
   const byField = new Map<string, Issue>();
   for (const error of Value.Errors(ExtractionSchema, input)) {
-    if (error.keyword === "additionalProperties" && error.instancePath === "") {
+    if (error.instancePath === "" && error.keyword === "additionalProperties") {
       for (const name of (error.params as { additionalProperties: string[] }).additionalProperties) {
         byField.set(name, {
           field: name,
           kind: "invalid_field",
           input: name,
           message: `Unknown field "${name}". Use only these fields: ${FIELD_NAMES}.`,
+        });
+      }
+      continue;
+    }
+    if (error.instancePath === "" && error.keyword === "required") {
+      for (const name of (error.params as { requiredProperties: string[] }).requiredProperties) {
+        byField.set(name, {
+          field: name,
+          kind: "invalid_field",
+          input: name,
+          message: `Missing required field "${name}" ("text" is the whole message, "attempt" is 1 or 2).`,
         });
       }
       continue;
