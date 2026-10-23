@@ -1,12 +1,20 @@
 {
   "id": "idx-agent",
   "name": "IDX Exchange Agent",
-  "description": "Natural-language property search over California MLS data (IDX Exchange internship).",
-  "categories": ["other"],
+  "description": "Conversational property search over California MLS data (IDX Exchange internship).",
+  "categories": [
+    "other"
+  ],
   "contracts": {
-    "tools": ["parse_property_query"]
+    "tools": [
+      "update_search",
+      "show_listings",
+      "show_sold_comps"
+    ]
   },
-  "skills": ["./skills"],
+  "skills": [
+    "./skills"
+  ],
   "activation": {
     "onStartup": true
   },

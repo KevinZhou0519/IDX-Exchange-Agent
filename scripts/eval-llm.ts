@@ -1,5 +1,5 @@
 // Runs every query in fixtures/queries.json through the real OpenClaw agent
-// (model + plugin) and scores the final parse_property_query result of each
+// (model + plugin) and scores the final update_search result of each
 // turn against the query's `agent` expectation.
 //
 // Usage: stop the gateway, keep the lid open, then `corepack pnpm eval` (optionally
@@ -14,7 +14,7 @@ import type { Outcome, ResolveResult } from "../packages/core/src/index.ts";
 
 type AgentExpect = { outcomes?: Outcome[]; filters?: Record<string, unknown>; note?: string; skip?: string };
 type Entry = { id: string; text: string; agent: AgentExpect };
-type LoggedCall = { text: string; params: unknown; details: ResolveResult };
+type LoggedCall = { tool: string; sessionKey: string; params: unknown; details: ResolveResult };
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const openclawDir = process.env.OPENCLAW_DIR ?? join(homedir(), "Developer", "openclaw");
@@ -65,7 +65,8 @@ for (const [index, entry] of entries.entries()) {
     { cwd: openclawDir, env: { ...process.env, IDX_EVAL_LOG: logPath }, encoding: "utf8", timeout: 300_000, stdio: ["ignore", "pipe", "pipe"] },
   );
   const calls: LoggedCall[] = existsSync(logPath)
-    ? readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line))
+    ? readFileSync(logPath, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line) as LoggedCall)
+        .filter((call) => call.tool === "update_search")
     : [];
   const final = calls.at(-1)?.details;
   const outcomePass = Boolean(final && entry.agent.outcomes?.includes(final.outcome));

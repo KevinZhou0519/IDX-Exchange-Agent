@@ -29,6 +29,9 @@ await build({
   platform: "node",
   target: "node24",
   external: ["openclaw", "openclaw/*"],
+  // Bundled CommonJS dependencies (mysql2) call require() for Node built-ins,
+  // which an ES module does not define on its own.
+  banner: { js: 'import { createRequire as __idxCreateRequire } from "node:module"; const require = __idxCreateRequire(import.meta.url);' },
   logLevel: "warning",
 });
 

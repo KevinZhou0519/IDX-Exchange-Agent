@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Value } from "typebox/value";
 import { normalizeGeminiToolSchemas } from "openclaw/plugin-sdk/provider-tools";
-import { fixtureVocab } from "../../core/test/fixtures/vocab.ts";
-import { createParseTool } from "../index.ts";
+import { createTools } from "../index.ts";
+import { fakeDeps } from "./fake-deps.ts";
 
 type JsonSchema = {
   type?: string | string[];
@@ -32,9 +32,9 @@ function* pairs(gemini: JsonSchema, original: JsonSchema, path: string): Generat
   if (gemini.items && original.items) yield* pairs(gemini.items, original.items, `${path}[]`);
 }
 
-describe("parse_property_query schema as Gemini sees it", () => {
-  it("accepts every value the Gemini schema offers the model", () => {
-    const tool = createParseTool(fixtureVocab);
+describe("tool schemas as Gemini sees them", () => {
+  it.each(["update_search", "show_listings", "show_sold_comps"] as const)("%s accepts every value the Gemini schema offers the model", (name) => {
+    const tool = createTools(fakeDeps(1), "chat-a")[name];
     const [normalized] = normalizeGeminiToolSchemas({ tools: [tool] } as never);
     const rejected: string[] = [];
     for (const [path, geminiNode, originalNode] of pairs(normalized.parameters as JsonSchema, tool.parameters as JsonSchema, "params")) {

@@ -1,29 +1,36 @@
 ---
 name: property-search
-description: Use when the user wants to find, search, browse or shop for homes, houses, condos, townhomes or listings for sale in California, or describes a home they are looking for (city, budget, bedrooms, pool, HOA, etc.).
+description: Use when the user wants to find, search, browse or shop for homes, houses, condos, townhomes or listings for sale in California, refines a search (budget, type, bedrooms, pool, HOA, "more", "start over"), or asks what similar homes sold for.
 ---
 
 # Property search
 
-Turn the user's home-search request into validated search filters with the
-`parse_property_query` tool, then confirm what you understood.
+Each chat has one saved home search. Every message the user sends about homes
+updates it with `update_search`; the tool searches the real MLS data and says
+what to do next. Use `show_listings` for more results and `show_sold_comps` for
+recent sales.
 
-## 1. Extract and call the tool
+## 1. Send only what this message changes
 
-Call `parse_property_query` once with `attempt: 1`:
+Call `update_search` with `attempt: 1`:
 
 - `text`: the user's whole message, verbatim.
-- Fill only fields the user actually mentioned. Never invent a budget, city or
-  bedroom count.
-- `evidence` on every field: the exact words from the message, copied verbatim
+- Only fields **this message** mentions. Earlier filters are already saved; do
+  not repeat them. Never invent a budget, city or bedroom count.
+- `remove`: filters the user drops ("forget the pool" → `["pool"]`, "any price"
+  → `["minPrice", "maxPrice"]`).
+- `reset: true`: the user starts a new search ("start over", "new search").
+- `evidence` on every field: the exact words from this message, copied verbatim
   (for "under 1.5 mil", the evidence is `under 1.5 mil`). The tool rejects
   values whose evidence is not in the message.
+- An answer to your question is a change too: after "What's your budget?",
+  "1.2M" → `maxPrice: { value: 1200000, evidence: "1.2M" }`.
 
 ## Output format (matches the MLS data exactly)
 
 | Field | Format | Examples |
 |---|---|---|
-| `cities` | The user's spelling (typos included), each word capitalized | "irivine" → `Irivine`; "newport beach" → `Newport Beach` |
+| `cities` | City name only, no state; the user's spelling (typos included), each word capitalized | "Irvine, CA" → `Irvine`; "irivine" → `Irivine`; "newport beach" → `Newport Beach` |
 | `types` / `excludeTypes` | Exactly one dataset type name | condo → `Condominium`; townhome → `Townhouse`; house, family home, single-family → `SingleFamilyResidence`; duplex → `Duplex`; mobile or manufactured home → `ManufacturedOnLand` |
 | `minPrice` / `maxPrice` | Whole dollars, no symbols | "$1.5M" → `1500000`; "800k" → `800000`; "under a million" → `1000000` |
 | `minBeds` | Whole number | "3br" → `3`; "studio" → `0` |
@@ -42,7 +49,7 @@ Call `parse_property_query` once with `attempt: 1`:
 - "Not a condo" goes in `excludeTypes`. Wishes no field covers ("near good
   schools", "quiet street") go in `wishes`.
 
-Use exactly these field names (include only what the user mentioned):
+Use exactly these field names (include only what this message mentions):
 
 ```json
 {
@@ -59,43 +66,55 @@ Use exactly these field names (include only what the user mentioned):
   "excludeTypes": [{ "value": "Townhouse", "evidence": "<exact words>" }],
   "pool": { "value": true, "priority": "must", "evidence": "<exact words>" },
   "view": { "value": true, "priority": "nice", "evidence": "<exact words>" },
-  "wishes": "<anything else they want>"
+  "wishes": "<anything else they want>",
+  "remove": ["pool"],
+  "reset": false
 }
 ```
 
 ## 2. Act on `outcome`
 
 Everything you tell the user about their search must come from a successful
-`parse_property_query` result: its `outcome`, `summary` and `issues`. Never
-describe filters, corrections or listing counts the tool did not return.
+tool result. Never describe filters, corrections, counts, listings, prices or
+addresses a tool did not return.
 
-- **`ok`**: tell the user, in one sentence, what you will search for, based on
-  `summary`. Invite them to change anything.
+- **`ok`**: act on `next` (section 3).
 - **`needs_confirmation`**: name each item in `issues` in plain words, e.g. "I
   read <what they typed> as <matched city>", or "only <n> listings are filed
-  under <city>". Then state the search from `summary` and end your reply with
-  a direct yes/no question asking them to confirm. Do not continue until they
-  answer.
+  under <city>". Then end with a direct yes/no question. When they say yes, act
+  on `next` from that result (call `show_listings` with page 1 if it said
+  show).
 - **`needs_retry`**: read `issues`, fix your extraction (correct the value or
-  copy the evidence exactly), and call the tool again with `attempt: 2`.
-  Never make a third call. A retry may correct a value but must keep every
-  field the user asked for: never drop a city, price or other filter to make
-  an issue go away. If you cannot fix it, send it unchanged so the tool returns
-  `ambiguous`, then ask the user about it.
+  copy the evidence exactly), and call `update_search` again with
+  `attempt: 2`. Never a third call. A retry may correct a value but must keep
+  every field the user asked for: never drop a city, price or other filter to
+  make an issue go away. If you cannot fix it, send it unchanged so the tool
+  returns `ambiguous`, then ask the user about it.
 - **`ambiguous`**: if an issue has `kind: "rental"`, explain that the listings
   are homes for sale and ask whether they want to buy instead. Otherwise ask one
   specific question built from `issues[].candidates` (at most three options,
-  with listing counts), or, when an issue has no candidates, about the value
-  it quotes.
+  with listing counts), or, when an issue has no candidates, about the value it
+  quotes.
 
-If the tool call itself fails (an error instead of a result), do not guess.
-Tell the user you could not process the search and ask them to rephrase it.
+If a tool call fails (an error instead of a result), do not guess. Tell the
+user you could not process it and ask them to rephrase.
 
-When the user answers a question or corrects you, call the tool again with
-their updated request (`attempt: 1`).
+## 3. Act on `next`
 
-## 3. Stop after confirming
+- **`show`**: send `text` exactly as the tool returned it (it already contains
+  the cards). Then offer: "more" for the next 5, or what similar homes sold for.
+- **`ask`**: tell the user how many homes match (`total`) and ask **one**
+  question about `facet`, listing the `options` with their numbers, e.g. "208
+  homes left: Condominium (163), Townhouse (26), SingleFamilyResidence (12).
+  Which type?" Use plain words for type names (single-family home, condo).
+  For `price`, say what share of homes are under each price point.
+- **`relax`**: nothing matches. Offer each item in `suggestions` with its
+  number, e.g. "Without the price limit there are 14." If `suggestions` is
+  empty, say nothing is listed for that search and ask what to change.
 
-Searching the listings arrives in a later version. Once the filters are
-confirmed, say that search results are coming soon. Don't make up listings,
-prices or addresses.
+## 4. More results and sold homes
+
+- "More", "next", "show more" → `show_listings` with the next page number
+  (page 2 after the first results, then 3…). Send its text as returned.
+- "What did similar homes sell for?", "recent sales", "comps" →
+  `show_sold_comps`. Send its text as returned.
