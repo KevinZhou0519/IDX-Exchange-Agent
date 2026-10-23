@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Outcome, ResolveResult } from "../packages/core/src/index.ts";
 import { matchesSubset } from "./lib/match-subset.ts";
+import { replyText } from "./lib/reply-text.ts";
 
 type AgentExpect = { outcomes?: Outcome[]; filters?: Record<string, unknown>; note?: string; skip?: string };
 type Entry = { id: string; text: string; agent: AgentExpect };
@@ -26,17 +27,6 @@ mkdirSync(outDir, { recursive: true });
 const only = new Set(process.argv.slice(2));
 const corpus: Entry[] = JSON.parse(readFileSync(join(repoRoot, "fixtures", "queries.json"), "utf8"));
 const entries = corpus.filter((entry) => !entry.agent.skip && (only.size === 0 || only.has(entry.id)));
-
-function replyText(stdout: string): string {
-  const start = stdout.indexOf("{");
-  if (start < 0) return "";
-  try {
-    const envelope = JSON.parse(stdout.slice(start)) as { payloads?: { text?: string }[] };
-    return (envelope.payloads ?? []).map((payload) => payload.text ?? "").join(" ").trim();
-  } catch {
-    return "";
-  }
-}
 
 const results = [];
 for (const [index, entry] of entries.entries()) {

@@ -7,9 +7,10 @@ import type { Db } from "./db.ts";
 import type { Extraction, ResolvedFilters, ResolveResult } from "./filters.ts";
 import { applyUpdate } from "./merge.ts";
 import { planNext, type Counter, type NextAction } from "./planner.ts";
-import { resolveExtraction, summarize } from "./resolve.ts";
+import { decideOutcome, resolveExtraction, summarize } from "./resolve.ts";
 import { listingsPage, PAGE_SIZE, soldComps } from "./sql.ts";
 import type { SearchStore } from "./store.ts";
+import { validateExtraction } from "./validate.ts";
 import type { Vocabulary } from "./vocab.ts";
 
 export type SearchDeps = { store: SearchStore; db: Db; counter: Counter; vocab: Vocabulary };
@@ -36,6 +37,13 @@ export async function updateSearch(
   input: Extraction,
   realText?: string,
 ): Promise<UpdateResult> {
+  const invalid = validateExtraction(input);
+  if (invalid.length) {
+    // Misnamed or malformed fields: change nothing, so the retry starts clean.
+    const saved = deps.store.get(sessionKey)?.filters ?? { sources: {} };
+    const attempt = Number.isInteger(input.attempt) ? input.attempt : 1;
+    return { outcome: decideOutcome(invalid, attempt), attempt, filters: { sources: {} }, issues: invalid, saved, summary: summarize(saved) };
+  }
   const resolved = resolveExtraction(realText ? { ...input, text: realText } : input, deps.vocab);
   // resolved.filters holds only the fields that passed their checks.
   const saved = applyUpdate(deps.store.get(sessionKey)?.filters, resolved.filters, input.remove ?? [], input.reset ?? false);

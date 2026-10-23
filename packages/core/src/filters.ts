@@ -137,7 +137,8 @@ export type IssueKind =
   | "implausible"
   | "low_listings"
   | "auto_corrected"
-  | "rental";
+  | "rental"
+  | "invalid_field";
 
 export type Issue = {
   field: string;

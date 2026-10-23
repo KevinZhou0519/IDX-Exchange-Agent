@@ -28,7 +28,7 @@ describe("conversational search tools", () => {
     const page = await createTools(deps, "chat-a").show_listings.execute("t2", { page: 2 });
     expect(page.content[0].text.startsWith("Showing 6–7 of 7")).toBe(true);
     // In Code Mode the model sees `details`, not `content`: the cards must be there.
-    expect(page.details).toEqual({ total: 7, page: 2, text: page.content[0].text });
+    expect(page.details).toMatchObject({ total: 7, page: 2, text: page.content[0].text });
   });
 
   it("two sessions do not share searches", async () => {
@@ -90,5 +90,16 @@ describe("per-result instruction", () => {
       cities: [{ value: "Gotham", evidence: "Gotham" }],
     });
     expect(result.details.instruction).toBeUndefined();
+  });
+});
+
+describe("paging instructions", () => {
+  it("says when the last page has been shown", async () => {
+    const deps = fakeDeps(7);
+    await createTools(deps, "chat-a").update_search.execute("t1", irvineMessage);
+    const last = await createTools(deps, "chat-a").show_listings.execute("t2", { page: 2 });
+    expect(last.details.instruction).toMatch(/All 7 results have now been shown/);
+    const middle = await createTools(fakeDeps(12), "chat-b").show_listings.execute("t3", { page: 1 });
+    expect(middle.details.instruction).toBeUndefined();
   });
 });
