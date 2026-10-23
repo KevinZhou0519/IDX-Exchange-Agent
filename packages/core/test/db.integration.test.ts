@@ -3,6 +3,8 @@
 import { afterAll, describe, expect, it } from "vitest";
 import {
   countListings,
+  createDbCounter,
+  planNext,
   createDb,
   dbAvailable,
   facetCounts,
@@ -87,5 +89,19 @@ describe.skipIf(!available)("search queries on the real data", () => {
     const today = new Date().toISOString().slice(0, 10);
     expect(rows.every((r) => (r.CloseDate ?? "") <= today)).toBe(true);
     expect(summarizeComps(rows).count).toBe(50);
+  });
+});
+
+describe.skipIf(!available)("narrowing planner on the real data", () => {
+  it("asks about the type for Irvine under $1.2M, condos first", async () => {
+    const next = await planNext({ cities: [irvine], maxPrice: 1_200_000, sources: {} }, createDbCounter(db));
+    expect(next).toMatchObject({ action: "ask", total: 208, facet: "type" });
+    expect(next.action === "ask" && next.options[0]).toEqual({ label: "Condominium (163)", total: 163 });
+  });
+
+  it("asks for a budget for all of Irvine, with real price points", async () => {
+    const next = await planNext({ cities: [irvine], sources: {} }, createDbCounter(db));
+    expect(next).toMatchObject({ action: "ask", total: 723, facet: "price" });
+    expect(next.action === "ask" && next.options).toHaveLength(3);
   });
 });
