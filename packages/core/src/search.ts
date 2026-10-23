@@ -26,8 +26,17 @@ async function pageText(deps: SearchDeps, filters: ResolvedFilters, page: number
   return formatPage(rows, page, total);
 }
 
-export async function updateSearch(deps: SearchDeps, sessionKey: string, input: Extraction): Promise<UpdateResult> {
-  const resolved = resolveExtraction(input, deps.vocab);
+/**
+ * `realText` is the user's actual message when the plugin captured it; quotes
+ * are then checked against it instead of the model's copy in `input.text`.
+ */
+export async function updateSearch(
+  deps: SearchDeps,
+  sessionKey: string,
+  input: Extraction,
+  realText?: string,
+): Promise<UpdateResult> {
+  const resolved = resolveExtraction(realText ? { ...input, text: realText } : input, deps.vocab);
   // resolved.filters holds only the fields that passed their checks.
   const saved = applyUpdate(deps.store.get(sessionKey)?.filters, resolved.filters, input.remove ?? [], input.reset ?? false);
   deps.store.save(sessionKey, saved);

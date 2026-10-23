@@ -11,12 +11,14 @@ import {
   ExtractionSchema,
   createDb,
   createDbCounter,
+  createMessageLog,
   createSqliteStore,
   loadVocabulary,
   showListings,
   showSoldComps,
   updateSearch,
   type Extraction,
+  type MessageLog,
   type SearchDeps,
   type Vocabulary,
 } from "@idx/core";
@@ -42,7 +44,17 @@ function logForEval(tool: string, sessionKey: string, params: unknown, details: 
 
 const textResult = <T,>(text: string, details: T) => ({ content: [{ type: "text" as const, text }], details });
 
-export function createTools(deps: SearchDeps, sessionKey: string) {
+/** Records a real inbound message for its chat (OpenClaw's message_received hook). */
+export function recordInbound(
+  messages: MessageLog,
+  event: { content: string; sessionKey?: string },
+  ctx: { sessionKey?: string },
+) {
+  const sessionKey = event.sessionKey ?? ctx.sessionKey;
+  if (sessionKey && event.content) messages.record(sessionKey, event.content);
+}
+
+export function createTools(deps: SearchDeps, sessionKey: string, messages?: MessageLog) {
   return {
     update_search: {
       name: "update_search",
@@ -50,7 +62,7 @@ export function createTools(deps: SearchDeps, sessionKey: string) {
       description: UPDATE_DESCRIPTION,
       parameters: ExtractionSchema,
       async execute(_toolCallId: string, params: Extraction) {
-        const details = await updateSearch(deps, sessionKey, params);
+        const details = await updateSearch(deps, sessionKey, params, messages?.latest(sessionKey));
         logForEval("update_search", sessionKey, params, details);
         const { outcome, summary, issues, next, text } = details;
         return textResult(JSON.stringify({ outcome, summary, issues, next, text }), details);
@@ -112,8 +124,12 @@ export default definePluginEntry({
       counter: createDbCounter(db),
       vocab,
     };
+    // Needs channels.whatsapp.pluginHooks.messageReceived: true to receive
+    // WhatsApp messages; without it, quotes are checked against the model's copy.
+    const messages = createMessageLog();
+    api.on("message_received", (event, ctx) => recordInbound(messages, event, ctx));
     for (const name of TOOL_NAMES) {
-      api.registerTool((ctx) => createTools(deps, ctx.sessionKey ?? "default")[name], { name });
+      api.registerTool((ctx) => createTools(deps, ctx.sessionKey ?? "default", messages)[name], { name });
     }
   },
 });
