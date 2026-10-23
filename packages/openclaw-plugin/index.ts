@@ -1,49 +1,95 @@
 // OpenClaw adapter for the IDX agent. The only file that imports OpenClaw;
-// all behavior lives in @idx/core.
+// all behavior lives in @idx/core. Each tool is created per call with the
+// chat's session key, so every conversation has its own saved search.
 import { appendFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Type } from "typebox";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import {
   ExtractionSchema,
+  createDb,
+  createDbCounter,
+  createSqliteStore,
   loadVocabulary,
-  resolveExtraction,
+  showListings,
+  showSoldComps,
+  updateSearch,
   type Extraction,
-  type ResolveResult,
+  type SearchDeps,
   type Vocabulary,
 } from "@idx/core";
 
-const PARSE_DESCRIPTION = [
-  "Turn a home-search request into validated MLS search filters.",
-  "Fill only the fields the user actually mentioned. For every value, set `evidence` to the exact words from the user's message it came from, copied verbatim, and pass the full message as `text`.",
-  "Write city and type values the way the user wrote them (typos included); the tool matches them to the real data.",
-  "The result's `outcome` says what to do next: ok, needs_confirmation, needs_retry (call again once with attempt 2, using `issues`), or ambiguous (ask the user).",
+const UPDATE_DESCRIPTION = [
+  "Update this chat's saved home search with what the user's latest message adds or changes, then get the next step.",
+  "Send only fields this message mentions; earlier filters are kept. Use `remove` for filters the user drops and `reset: true` to start a new search.",
+  "For every value, set `evidence` to the exact words from the message, and pass the whole message as `text`.",
+  "The result has `outcome` (ok, needs_confirmation, needs_retry, ambiguous) and, when ok or needs_confirmation, `next`: show (send `text`), ask (one question using `options`), or relax (offer `suggestions`).",
 ].join(" ");
 
-export function createParseTool(vocab: Vocabulary) {
+const PageSchema = Type.Object(
+  { page: Type.Integer({ minimum: 1, description: "Page of results to show; 1 is the first 5, 2 the next 5" }) },
+  { additionalProperties: false },
+);
+const NoParams = Type.Object({}, { additionalProperties: false });
+
+/** Evaluation runs only (scripts/eval-*.ts). Unset by default, so user messages are never written to disk. */
+function logForEval(tool: string, sessionKey: string, params: unknown, details: unknown) {
+  const evalLog = process.env.IDX_EVAL_LOG;
+  if (evalLog) appendFileSync(evalLog, JSON.stringify({ tool, sessionKey, params, details }) + "\n");
+}
+
+const textResult = <T,>(text: string, details: T) => ({ content: [{ type: "text" as const, text }], details });
+
+export function createTools(deps: SearchDeps, sessionKey: string) {
   return {
-    name: "parse_property_query",
-    label: "Parse property search",
-    description: PARSE_DESCRIPTION,
-    parameters: ExtractionSchema,
-    async execute(_toolCallId: string, params: Extraction) {
-      const details: ResolveResult = resolveExtraction(params, vocab);
-      // Evaluation runs only (scripts/eval-llm.ts). Unset by default, so user
-      // messages are never written to disk in normal use.
-      const evalLog = process.env.IDX_EVAL_LOG;
-      if (evalLog) appendFileSync(evalLog, JSON.stringify({ text: params.text, params, details }) + "\n");
-      const { outcome, summary, issues } = details;
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify({ outcome, summary, issues }) }],
-        details,
-      };
+    update_search: {
+      name: "update_search",
+      label: "Update home search",
+      description: UPDATE_DESCRIPTION,
+      parameters: ExtractionSchema,
+      async execute(_toolCallId: string, params: Extraction) {
+        const details = await updateSearch(deps, sessionKey, params);
+        logForEval("update_search", sessionKey, params, details);
+        const { outcome, summary, issues, next, text } = details;
+        return textResult(JSON.stringify({ outcome, summary, issues, next, text }), details);
+      },
+    },
+    show_listings: {
+      name: "show_listings",
+      label: "Show listings",
+      description: "Show a page of property cards for this chat's saved search. Use page 2, 3… when the user asks for more.",
+      parameters: PageSchema,
+      async execute(_toolCallId: string, params: { page: number }) {
+        const { total, text } = await showListings(deps, sessionKey, params.page);
+        const details = { total, page: params.page };
+        logForEval("show_listings", sessionKey, params, details);
+        return textResult(text, details);
+      },
+    },
+    show_sold_comps: {
+      name: "show_sold_comps",
+      label: "Show sold comps",
+      description: "Show what similar homes recently sold for, based on this chat's saved search.",
+      parameters: NoParams,
+      async execute(_toolCallId: string, _params: Record<string, never>) {
+        const { summary, text } = await showSoldComps(deps, sessionKey);
+        const details = { summary };
+        logForEval("show_sold_comps", sessionKey, {}, details);
+        return textResult(text, details);
+      },
     },
   };
 }
 
+export type IdxTools = ReturnType<typeof createTools>;
+const TOOL_NAMES = ["update_search", "show_listings", "show_sold_comps"] as const;
+
 export default definePluginEntry({
   id: "idx-agent",
   name: "IDX Exchange Agent",
-  description: "Natural-language property search over California MLS data.",
+  description: "Conversational property search over California MLS data.",
   register(api) {
     // The build copies the vocabulary next to the bundle (dist/data/vocab.json).
     // Loaded once at startup; throws with the command to run if it is missing.
@@ -58,6 +104,16 @@ export default definePluginEntry({
         { cause: error },
       );
     }
-    api.registerTool(createParseTool(vocab));
+    const stateDir = process.env.IDX_STATE_DIR ?? join(homedir(), ".openclaw", "idx-agent");
+    const db = createDb();
+    const deps: SearchDeps = {
+      store: createSqliteStore(join(stateDir, "searches.sqlite")),
+      db,
+      counter: createDbCounter(db),
+      vocab,
+    };
+    for (const name of TOOL_NAMES) {
+      api.registerTool((ctx) => createTools(deps, ctx.sessionKey ?? "default")[name], { name });
+    }
   },
 });
