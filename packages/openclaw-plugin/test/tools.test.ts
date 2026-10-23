@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { createTools } from "../index.ts";
+import { createMessageLog } from "@idx/core";
+import { createTools, recordInbound } from "../index.ts";
 import { fakeDeps } from "./fake-deps.ts";
 
 const irvineMessage = { text: "homes in Irvine", attempt: 1, cities: [{ value: "Irvine", evidence: "Irvine" }] };
@@ -42,5 +43,27 @@ describe("conversational search tools", () => {
     const comps = await createTools(deps, "chat-a").show_sold_comps.execute("t3", {});
     expect(comps.content[0].text).toContain("No recent sales found");
     expect(deps.queries.at(-1)?.params).toContain("Irvine");
+  });
+});
+
+describe("real inbound message", () => {
+  it("update_search checks quotes against the chat's latest real message", async () => {
+    const messages = createMessageLog();
+    messages.record("chat-a", "homes in Irvine under $1.5M");
+    const tools = createTools(fakeDeps(50), "chat-a", messages);
+    const result = await tools.update_search.execute("t1", {
+      text: "homes in Irvine under $2M",
+      attempt: 1,
+      cities: [{ value: "Irvine", evidence: "Irvine" }],
+      maxPrice: { value: 2_000_000, evidence: "under $2M" },
+    });
+    expect(result.details.outcome).toBe("needs_retry");
+  });
+
+  it("records inbound messages from the message_received hook by session", () => {
+    const messages = createMessageLog();
+    recordInbound(messages, { content: "condos in Tustin", sessionKey: "chat-b" }, {});
+    recordInbound(messages, { content: "ignored: no session" }, {});
+    expect(messages.latest("chat-b")).toBe("condos in Tustin");
   });
 });

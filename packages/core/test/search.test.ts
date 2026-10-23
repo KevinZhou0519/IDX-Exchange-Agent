@@ -123,6 +123,32 @@ describe("updateSearch", () => {
   });
 });
 
+describe("checking against the real message", () => {
+  it("checks quotes against the real message when one is known", async () => {
+    const { deps: d } = deps(50);
+    const result = await updateSearch(
+      d,
+      "chat-a",
+      { text: "homes in Irvine under $2M", attempt: 1, cities: [irvine], maxPrice: { value: 2_000_000, evidence: "under $2M" } },
+      "homes in Irvine under $1.5M",
+    );
+    expect(result.outcome).toBe("needs_retry");
+    expect(result.issues).toEqual([expect.objectContaining({ field: "maxPrice", kind: "evidence_mismatch" })]);
+    expect(result.saved.maxPrice).toBeUndefined();
+  });
+
+  it("uses the model's text when no real message is known", async () => {
+    const { deps: d } = deps(50);
+    const result = await updateSearch(d, "chat-a", {
+      text: "homes in Irvine under $2M",
+      attempt: 1,
+      cities: [irvine],
+      maxPrice: { value: 2_000_000, evidence: "under $2M" },
+    });
+    expect(result.outcome).toBe("ok");
+  });
+});
+
 describe("showListings", () => {
   it("shows the requested page of the saved search", async () => {
     const { deps: d, queries } = deps(7);
