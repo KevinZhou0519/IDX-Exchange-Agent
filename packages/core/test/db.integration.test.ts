@@ -4,6 +4,10 @@ import { afterAll, describe, expect, it } from "vitest";
 import {
   countListings,
   createDbCounter,
+  createMemoryStore,
+  loadVocabulary,
+  showSoldComps,
+  updateSearch,
   planNext,
   createDb,
   dbAvailable,
@@ -103,5 +107,40 @@ describe.skipIf(!available)("narrowing planner on the real data", () => {
     const next = await planNext({ cities: [irvine], sources: {} }, createDbCounter(db));
     expect(next).toMatchObject({ action: "ask", total: 723, facet: "price" });
     expect(next.action === "ask" && next.options).toHaveLength(3);
+  });
+});
+
+describe.skipIf(!available)("handbook conversation on the real data", () => {
+  it("narrows Irvine → budget → type and then shows cards", async () => {
+    const deps = { store: createMemoryStore(), db, counter: createDbCounter(db), vocab: loadVocabulary() };
+    const chat = "integration-chat";
+
+    const first = await updateSearch(deps, chat, {
+      text: "Find homes in Irvine",
+      attempt: 1,
+      cities: [{ value: "Irvine", evidence: "Irvine" }],
+    });
+    expect(first.next).toMatchObject({ action: "ask", facet: "price", total: 723 });
+
+    const second = await updateSearch(deps, chat, {
+      text: "Under $1.2M",
+      attempt: 1,
+      maxPrice: { value: 1_200_000, evidence: "Under $1.2M" },
+    });
+    expect(second.next).toMatchObject({ action: "ask", facet: "type", total: 208 });
+
+    const third = await updateSearch(deps, chat, {
+      text: "Single family with at least 3 beds",
+      attempt: 1,
+      types: [{ value: "SingleFamilyResidence", evidence: "Single family" }],
+      minBeds: { value: 3, evidence: "at least 3 beds" },
+    });
+    expect(third.next?.action).toBe("show");
+    expect(third.next && third.next.total).toBeLessThanOrEqual(20);
+    expect(third.text).toContain("Irvine");
+    expect(third.summary).toBe("3+ bed SingleFamilyResidence in Irvine, up to $1,200,000");
+
+    const comps = await showSoldComps(deps, chat);
+    expect(comps.summary?.count).toBeGreaterThan(0);
   });
 });
