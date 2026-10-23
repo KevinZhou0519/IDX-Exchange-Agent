@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PAGE_SIZE, type FilterField, type NextAction, type UpdateResult } from "../packages/core/src/index.ts";
 import { matchesSubset } from "./lib/match-subset.ts";
+import { replyText } from "./lib/reply-text.ts";
 
 type Expect = {
   tool?: "update_search" | "show_listings" | "show_sold_comps";
@@ -45,11 +46,14 @@ const readCalls = (path: string): Call[] =>
 const MAX_CALLS_PER_TURN = 3;
 
 /** Problems with one turn's calls against its expectation; empty means pass. */
-function judge(calls: Call[], expect: Expect): string[] {
+function judge(calls: Call[], expect: Expect, reply: string): string[] {
   const problems: string[] = [];
   if (calls.length > MAX_CALLS_PER_TURN) problems.push(`${calls.length} tool calls (looping?)`);
   const last = <T extends Call["tool"]>(tool: T) =>
     calls.filter((c): c is Extract<Call, { tool: T }> => c.tool === tool).at(-1);
+  // Past the last page, either paging again or simply saying so is correct.
+  const saidNoMore = calls.length === 0 && /no more|that was all|that's all|all \d+ (results|homes|listings)|already (seen|shown)/i.test(reply);
+  if (expect.noMore && saidNoMore) return problems;
   if (expect.tool && !calls.some((c) => c.tool === expect.tool)) problems.push(`expected a ${expect.tool} call`);
   const update = last("update_search");
   if (expect.next || expect.facet || expect.saved || expect.absent) {
@@ -89,11 +93,12 @@ for (const conversation of conversations) {
     );
     const calls = readCalls(logPath).slice(before);
     const timedOut = run.status === null;
-    const problems = timedOut ? ["timed out"] : judge(calls, turn.expect);
+    const reply = replyText(run.stdout ?? "");
+    const problems = timedOut ? ["timed out"] : judge(calls, turn.expect, reply);
     turnCount++;
     if (timedOut) timeouts++;
     if (problems.length === 0) turnPasses++;
-    turns.push({ message: turn.message, tools: calls.map((c) => c.tool), problems, seconds: Math.round((Date.now() - started) / 1000) });
+    turns.push({ message: turn.message, tools: calls.map((c) => c.tool), problems, reply, seconds: Math.round((Date.now() - started) / 1000) });
     const mark = timedOut ? "TIMEOUT" : problems.length ? "FAIL" : "PASS";
     console.log(`${mark} ${conversation.id} #${index + 1} "${turn.message}" → ${calls.map((c) => c.tool).join(", ") || "no tool"}${problems.length ? ` | ${problems.join("; ")}` : ""}`);
   }

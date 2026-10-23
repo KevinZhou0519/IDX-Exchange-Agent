@@ -123,6 +123,40 @@ describe("updateSearch", () => {
   });
 });
 
+describe("input validation", () => {
+  it("rejects unknown field names with the list of real ones, saving nothing", async () => {
+    const { deps: d } = deps(50);
+    const result = await updateSearch(d, "chat-a", {
+      text: "Condos in Irvine",
+      attempt: 1,
+      cities: [irvine],
+      propertyTypes: [{ value: "condo", evidence: "Condos" }],
+    } as never);
+    expect(result.outcome).toBe("needs_retry");
+    expect(result.issues).toEqual([expect.objectContaining({ field: "propertyTypes", kind: "invalid_field" })]);
+    expect(result.issues[0].message).toContain("types");
+    expect(d.store.get("chat-a")).toBeUndefined();
+    expect(result.next).toBeUndefined();
+  });
+
+  it("asks the user after a second invalid attempt", async () => {
+    const { deps: d } = deps(50);
+    const result = await updateSearch(d, "chat-a", { text: "Condos", attempt: 2, propertyTypes: [] } as never);
+    expect(result.outcome).toBe("ambiguous");
+  });
+
+  it("rejects a value in the wrong format", async () => {
+    const { deps: d } = deps(50);
+    const result = await updateSearch(d, "chat-a", {
+      text: "condo in Irvine",
+      attempt: 1,
+      types: [{ value: "condo", evidence: "condo" }],
+    } as never);
+    expect(result.outcome).toBe("needs_retry");
+    expect(result.issues[0]).toMatchObject({ field: "types", kind: "invalid_field" });
+  });
+});
+
 describe("checking against the real message", () => {
   it("checks quotes against the real message when one is known", async () => {
     const { deps: d } = deps(50);

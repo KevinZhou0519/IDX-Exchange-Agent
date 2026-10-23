@@ -27,7 +27,7 @@ const NUMERIC_FIELDS: Record<NumericField, { kind: "amount" | "count"; range: ke
   maxHoa: { kind: "amount", range: "hoa" },
 };
 
-const RETRYABLE = new Set(["not_found", "evidence_mismatch", "implausible"]);
+const RETRYABLE = new Set(["not_found", "evidence_mismatch", "implausible", "invalid_field"]);
 
 /** A monthly amount ("$3,000/month", "per month") is rent, not a sale price. */
 const MONTHLY = /(\/\s*mo(nth)?\b|\bper\s+mo(nth)?\b|\ba\s+month\b|\bmonthly\b)/i;
@@ -83,7 +83,7 @@ function evidenceIssue(field: string, input: string, evidence: string, reason: s
   };
 }
 
-function decideOutcome(issues: Issue[], attempt: number): Outcome {
+export function decideOutcome(issues: Issue[], attempt: number): Outcome {
   // Rentals and ties need the user, not another extraction.
   if (issues.some((issue) => issue.kind === "ambiguous" || issue.kind === "rental")) return "ambiguous";
   if (issues.some((issue) => RETRYABLE.has(issue.kind))) return attempt === 1 ? "needs_retry" : "ambiguous";

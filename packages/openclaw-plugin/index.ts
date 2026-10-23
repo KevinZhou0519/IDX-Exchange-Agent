@@ -9,6 +9,7 @@ import { Type } from "typebox";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import {
   ExtractionSchema,
+  PAGE_SIZE,
   createDb,
   createDbCounter,
   createMessageLog,
@@ -98,7 +99,11 @@ export function createTools(deps: SearchDeps, sessionKey: string, messages?: Mes
       async execute(_toolCallId: string, params: { page: number }) {
         const { total, text } = await showListings(deps, sessionKey, params.page);
         // Code Mode hands the model `details`, not `content`, so the cards go in both.
-        const details = { total, page: params.page, text };
+        const lastPage = total > 0 && params.page * PAGE_SIZE >= total;
+        const instruction = lastPage
+          ? `All ${total} results have now been shown. If the user asks for more, tell them that was all and offer to change the search; do not call show_sold_comps unless they ask about sold homes.`
+          : undefined;
+        const details = { total, page: params.page, text, instruction };
         logForEval("show_listings", sessionKey, params, details);
         return textResult(text, details);
       },

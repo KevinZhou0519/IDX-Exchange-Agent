@@ -1,5 +1,7 @@
 // Guards against the model misreading or inventing values: every value must be
 // backed by the user's own words and fall in a believable range.
+import { Value } from "typebox/value";
+import { ExtractionSchema, type Issue } from "./filters.ts";
 import { normalizeText, parseAmounts, parseCount } from "./normalize.ts";
 
 export type EvidenceCheck = "ok" | "not_in_message" | "value_mismatch";
@@ -52,4 +54,38 @@ export function checkPlausible(field: keyof typeof PLAUSIBLE, value: number): bo
   const range: { min: number; max: number; step?: number } = PLAUSIBLE[field];
   if (!Number.isFinite(value) || value < range.min || value > range.max) return false;
   return range.step === undefined || Number.isInteger(value / range.step);
+}
+
+const FIELD_NAMES = Object.keys(ExtractionSchema.properties).join(", ");
+
+/**
+ * Schema problems in a tool call, one issue per field. OpenClaw does not
+ * enforce the schema in Code Mode, so a misnamed field ("propertyTypes")
+ * would otherwise be dropped silently.
+ */
+export function validateExtraction(input: unknown): Issue[] {
+  const byField = new Map<string, Issue>();
+  for (const error of Value.Errors(ExtractionSchema, input)) {
+    if (error.keyword === "additionalProperties" && error.instancePath === "") {
+      for (const name of (error.params as { additionalProperties: string[] }).additionalProperties) {
+        byField.set(name, {
+          field: name,
+          kind: "invalid_field",
+          input: name,
+          message: `Unknown field "${name}". Use only these fields: ${FIELD_NAMES}.`,
+        });
+      }
+      continue;
+    }
+    const field = error.instancePath.split("/")[1];
+    if (!field || byField.has(field) || error.keyword === "boolean") continue;
+    const allowed = (error.params as { allowedValues?: string[] }).allowedValues;
+    byField.set(field, {
+      field,
+      kind: "invalid_field",
+      input: error.instancePath,
+      message: `${error.instancePath.slice(1)} ${error.message}${allowed ? `: ${allowed.join(", ")}` : ""}.`,
+    });
+  }
+  return [...byField.values()];
 }
