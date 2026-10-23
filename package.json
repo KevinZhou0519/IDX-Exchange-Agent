@@ -10,7 +10,9 @@
     "typecheck": "tsc -p tsconfig.json",
     "link-openclaw": "bash scripts/link-openclaw.sh",
     "postinstall": "bash scripts/link-openclaw.sh || echo \"warning: OpenClaw SDK not linked; plugin tests will fail until it is\"",
-    "build:plugin": "node scripts/build-plugin.ts"
+    "build:plugin": "node scripts/build-plugin.ts",
+    "test:db": "vitest run --config vitest.integration.config.ts",
+    "setup:db": "node scripts/setup-db.ts"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

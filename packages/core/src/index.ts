@@ -5,3 +5,4 @@ export * from "./aliases.ts";
 export * from "./match.ts";
 export * from "./validate.ts";
 export * from "./resolve.ts";
+export * from "./db.ts";
