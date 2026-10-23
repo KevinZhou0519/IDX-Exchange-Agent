@@ -12,9 +12,9 @@ WhatsApp; the agent answers from California MLS data: active listings
 | 0 | Environment setup: OpenClaw, MySQL import, WhatsApp | Done |
 | 1 | OpenClaw architecture fundamentals | Done |
 | 2 | Natural-language property search | Done |
-| 3 | MySQL integration (parameterized queries, pagination) | Next |
-| 4 | Multi-turn conversational search | |
-| 5 | Market statistics from sold comps | |
+| 3 | MySQL integration (parameterized queries, pagination) | Done |
+| 4 | Multi-turn conversational search | Done |
+| 5 | Market statistics from sold comps | Next |
 | 6 | Embeddings and semantic search | |
 | 7 | Recommendation engine | |
 | 8 | RAG over MLS field definitions | |
@@ -26,9 +26,10 @@ WhatsApp; the agent answers from California MLS data: active listings
 ## How it works (short version)
 
 ```text
-WhatsApp → OpenClaw Gateway → session → agent loop
-         → model picks a skill → skill calls a typed tool
-         → parameterized SQL on MySQL → reply over WhatsApp
+WhatsApp → OpenClaw Gateway → agent (Gemini) → update_search
+   → checks the message's filters against the data → updates this chat's saved search
+   → counts matches in MySQL → show cards (≤ 20) / ask one question with real counts / suggest what to relax
+   → reply over WhatsApp;  "more" → show_listings · "what did similar homes sell for?" → show_sold_comps
 ```
 
 ## Running it locally
@@ -49,13 +50,17 @@ Prerequisites: Node 24.16+, pnpm (via corepack), MySQL 8.4, Python 3.12.
    mysql -u root idx_exchange < rets_property.sql
    mysql -u root idx_exchange < california_sold.sql
    ```
-3. Copy `.env.example` to `.env` and fill in your keys.
-4. Start the Gateway and open the dashboard:
+3. Create the agent's read-only database user and the sold-comps index (run once):
+   ```bash
+   corepack pnpm setup:db
+   ```
+4. Copy `.env.example` to `.env` and fill in your keys.
+5. Start the Gateway and open the dashboard:
    ```bash
    corepack pnpm openclaw gateway
    corepack pnpm openclaw dashboard
    ```
-5. Link WhatsApp: `corepack pnpm openclaw channels login --channel whatsapp`
+6. Link WhatsApp: `corepack pnpm openclaw channels login --channel whatsapp`
 
 ## Data
 
@@ -67,15 +72,21 @@ dumps and the `data/` folder.
 
 ```text
 packages/
-  core/                    pure logic, no OpenClaw: filter format, text cleanup,
-                           dataset matching, evidence/plausibility checks, outcomes
-  openclaw-plugin/         OpenClaw adapter: parse_property_query tool + property-search skill
-fixtures/queries.json      test queries with expected results (simulated and real-agent)
+  core/                    pure logic, no OpenClaw: filter format and checks, dataset
+                           matching, SQL builders, property cards, narrowing planner,
+                           saved searches (SQLite), the search service
+  openclaw-plugin/         OpenClaw adapter: update_search, show_listings and
+                           show_sold_comps tools + the property-search skill
+fixtures/
+  queries.json             single-message test queries (simulated and real-agent)
+  conversations.json       scripted multi-turn conversations for the real agent
 scripts/
+  setup-db.ts              read-only MySQL user + sold-comps index
   build-vocab.ts           export cities and property types from MySQL (local only)
   build-plugin.ts          build the self-contained folder OpenClaw installs
   link-openclaw.sh         link the local OpenClaw SDK for tests
-  eval-llm.ts              run every test query through the real agent and score it
+  eval-llm.ts              score the real agent on single messages
+  eval-conversation.ts     score the real agent on whole conversations
 .env.example               environment variables the agent needs
 ```
 
@@ -88,10 +99,13 @@ Requires Node 24.16+ and an OpenClaw checkout at `~/Developer/openclaw`
 |---|---|
 | `corepack pnpm install` | Install dependencies and link the OpenClaw SDK |
 | `corepack pnpm test` | Unit tests (no database, no model calls) |
+| `corepack pnpm test:db` | Database tests against the local MySQL as the read-only user (skipped when MySQL is down) |
+| `corepack pnpm setup:db` | Create the read-only `idx_user` and the sold-comps index (idempotent) |
 | `corepack pnpm typecheck` | TypeScript check |
 | `corepack pnpm vocab` | Export the dataset vocabulary from MySQL into `packages/core/data/` (gitignored) |
 | `corepack pnpm build:plugin` | Build `packages/openclaw-plugin/dist`; restart the gateway afterwards |
-| `corepack pnpm eval` | Score the real agent on every test query (gateway stopped, lid open) |
+| `corepack pnpm eval` | Score the real agent on every single-message test query (gateway stopped, lid open) |
+| `corepack pnpm eval:chat` | Score the real agent on scripted multi-turn conversations (gateway stopped, lid open) |
 
 Install the plugin once (from the OpenClaw checkout):
 
