@@ -66,6 +66,12 @@ const FeatureField = Type.Object(
   strict,
 );
 
+/** Every filter a search can hold; also the values allowed in `remove`. */
+export const FILTER_FIELDS = [
+  "cities", "minPrice", "maxPrice", "minBeds", "minBaths", "minSqft", "maxHoa",
+  "types", "excludeTypes", "pool", "view", "wishes",
+] as const;
+
 export const ExtractionSchema = Type.Object({
   text: Type.String({ minLength: 1, description: "The user's message, verbatim" }),
   // An integer range, not a union of number literals: Gemini only supports
@@ -93,11 +99,15 @@ export const ExtractionSchema = Type.Object({
   wishes: Type.Optional(
     Type.String({ description: "Anything the user wants that the fields above cannot express, e.g. \"near good schools\"" }),
   ),
+  remove: Type.Optional(
+    Type.Array(Type.Enum(FILTER_FIELDS), { description: "Filters the user wants dropped, e.g. \"forget the pool\" → [\"pool\"]" }),
+  ),
+  reset: Type.Optional(Type.Boolean({ description: "true when the user starts a new search (\"start over\")" })),
 }, strict);
 
 export type Extraction = Static<typeof ExtractionSchema>;
 
-export type FilterField = Exclude<keyof Extraction, "text" | "attempt">;
+export type FilterField = (typeof FILTER_FIELDS)[number];
 
 export type MatchKind = "exact" | "alias" | "fuzzy";
 
