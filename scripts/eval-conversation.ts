@@ -41,9 +41,13 @@ const conversations: Conversation[] = JSON.parse(readFileSync(join(repoRoot, "fi
 const readCalls = (path: string): Call[] =>
   existsSync(path) ? readFileSync(path, "utf8").trim().split("\n").filter(Boolean).map((line) => JSON.parse(line)) : [];
 
+/** More tool calls than this in one turn means the model is looping. */
+const MAX_CALLS_PER_TURN = 3;
+
 /** Problems with one turn's calls against its expectation; empty means pass. */
 function judge(calls: Call[], expect: Expect): string[] {
   const problems: string[] = [];
+  if (calls.length > MAX_CALLS_PER_TURN) problems.push(`${calls.length} tool calls (looping?)`);
   const last = <T extends Call["tool"]>(tool: T) =>
     calls.filter((c): c is Extract<Call, { tool: T }> => c.tool === tool).at(-1);
   if (expect.tool && !calls.some((c) => c.tool === expect.tool)) problems.push(`expected a ${expect.tool} call`);

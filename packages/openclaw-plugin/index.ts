@@ -19,6 +19,7 @@ import {
   updateSearch,
   type Extraction,
   type MessageLog,
+  type NextAction,
   type SearchDeps,
   type Vocabulary,
 } from "@idx/core";
@@ -44,6 +45,26 @@ function logForEval(tool: string, sessionKey: string, params: unknown, details: 
 
 const textResult = <T,>(text: string, details: T) => ({ content: [{ type: "text" as const, text }], details });
 
+const FACET_WORDS = { city: "the city", price: "price (their budget)", type: "the type of home", beds: "bedrooms" } as const;
+
+/**
+ * A one-line instruction for the next step, placed in `details`: in Code Mode
+ * the model reads `details`, and without it a model shown cards tended to page
+ * through every listing instead of asking its question.
+ */
+export function nextInstruction(next: NextAction | undefined): string | undefined {
+  switch (next?.action) {
+    case "show":
+      return 'Send `text` to the user exactly as it is, then offer "more" or recent sales.';
+    case "ask":
+      return `Ask the user one question about ${FACET_WORDS[next.facet]} using \`options\` and \`total\`. Do not call show_listings until they answer or ask for listings.`;
+    case "relax":
+      return "Offer `suggestions` to the user (or say nothing matches if there are none). Do not call other tools.";
+    default:
+      return undefined;
+  }
+}
+
 /** Records a real inbound message for its chat (OpenClaw's message_received hook). */
 export function recordInbound(
   messages: MessageLog,
@@ -62,10 +83,11 @@ export function createTools(deps: SearchDeps, sessionKey: string, messages?: Mes
       description: UPDATE_DESCRIPTION,
       parameters: ExtractionSchema,
       async execute(_toolCallId: string, params: Extraction) {
-        const details = await updateSearch(deps, sessionKey, params, messages?.latest(sessionKey));
+        const result = await updateSearch(deps, sessionKey, params, messages?.latest(sessionKey));
+        const details = { ...result, instruction: nextInstruction(result.next) };
         logForEval("update_search", sessionKey, params, details);
-        const { outcome, summary, issues, next, text } = details;
-        return textResult(JSON.stringify({ outcome, summary, issues, next, text }), details);
+        const { outcome, summary, issues, next, text, instruction } = details;
+        return textResult(JSON.stringify({ outcome, summary, issues, next, text, instruction }), details);
       },
     },
     show_listings: {
