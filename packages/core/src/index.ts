@@ -11,3 +11,4 @@ export * from "./cards.ts";
 export * from "./planner.ts";
 export * from "./merge.ts";
 export * from "./store.ts";
+export * from "./search.ts";
