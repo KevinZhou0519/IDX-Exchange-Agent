@@ -1,7 +1,7 @@
 {
   "id": "idx-agent",
   "name": "IDX Exchange Agent",
-  "description": "Conversational property search over California MLS data (IDX Exchange internship).",
+  "description": "Conversational property search and market statistics over California MLS data (IDX Exchange internship).",
   "categories": [
     "other"
   ],
@@ -9,7 +9,8 @@
     "tools": [
       "update_search",
       "show_listings",
-      "show_sold_comps"
+      "show_sold_comps",
+      "market_report"
     ]
   },
   "skills": [
