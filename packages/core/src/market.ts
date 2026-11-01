@@ -1,6 +1,10 @@
 // The market math: cleans a city's sales and turns them into a report of
 // aggregates only. The model quotes these numbers; it never computes its own.
-import type { MarketSaleRow } from "./market-sql.ts";
+// marketReport() is the service behind the market_report tool.
+import type { Db } from "./db.ts";
+import { activeByType, citySales, dataWindow, type MarketSaleRow } from "./market-sql.ts";
+import { matchCity } from "./match.ts";
+import type { SearchDeps } from "./search.ts";
 
 /** Sale ÷ asking outside this range is a typo (a price entered wrong), not a deal. */
 export const RATIO_MIN = 0.5;
@@ -14,6 +18,8 @@ export const FEW_SALES = 30;
 /** A change smaller than this (in %) is "flat". */
 export const FLAT_PCT = 2;
 export const BALANCED_SUPPLY_MONTHS = 6;
+/** One answer compares at most this many cities. */
+export const MAX_CITIES = 3;
 
 export type Stats = {
   sales: number;
@@ -218,4 +224,107 @@ export function buildReport(
     supply: supplyOf(rows, activeTotal, fullMonths),
     notes,
   };
+}
+
+export type CityIssue = { input: string; kind: "typo" | "unknown" | "ambiguous"; match?: string; candidates?: string[] };
+
+export type MarketResult = {
+  outcome: "ok" | "needs_confirmation" | "ambiguous" | "needs_city" | "needs_retry" | "too_many";
+  reports: MarketReport[];
+  issues: CityIssue[];
+  instruction: string;
+};
+
+const ANSWER =
+  "Answer the user's question using only numbers in `reports`: pick the ones that answer it, quote them as given " +
+  "(rounding like $1,245,000 → $1.25M is fine) and pass on the relevant `notes`. Never calculate a number yourself.";
+
+const refuse = (outcome: "needs_city" | "needs_retry" | "too_many", instruction: string): MarketResult => ({
+  outcome,
+  reports: [],
+  issues: [],
+  instruction,
+});
+
+/** The sold data's date range never changes while the gateway runs, so it is read once per database. */
+const windows = new WeakMap<Db, Promise<{ first: string; last: string }>>();
+function windowOf(db: Db): Promise<{ first: string; last: string }> {
+  let window = windows.get(db);
+  if (!window) {
+    window = db.query<{ first: string; last: string }>(dataWindow()).then(([row]) => row);
+    windows.set(db, window);
+    window.catch(() => windows.delete(db)); // a failed read is retried next time
+  }
+  return window;
+}
+
+/** City names from the tool call, or the saved search's cities; null when the input is malformed. */
+function requestedPlaces(deps: SearchDeps, sessionKey: string, input: unknown): string[] | { values: string[] }[] | null {
+  if (typeof input !== "object" || input === null) return null;
+  const cities = (input as { cities?: unknown }).cities;
+  if (cities === undefined || cities === null || (Array.isArray(cities) && cities.length === 0)) {
+    return (deps.store.get(sessionKey)?.filters.cities ?? []).map((c) => ({ values: c.values }));
+  }
+  if (!Array.isArray(cities) || !cities.every((c) => typeof c === "string" && c.trim())) return null;
+  return cities.map((c: string) => c.trim());
+}
+
+/**
+ * Market reports for 1–3 cities named in the call, or for the city of this
+ * chat's saved search when none is named.
+ */
+export async function marketReport(deps: SearchDeps, sessionKey: string, input: unknown): Promise<MarketResult> {
+  const requested = requestedPlaces(deps, sessionKey, input);
+  if (requested === null) {
+    return refuse("needs_retry", 'Call market_report again with `cities` as a list of 1–3 city names, e.g. {"cities": ["Irvine"]}.');
+  }
+  if (requested.length === 0) {
+    return refuse("needs_city", "Ask the user which city they want market numbers for. Do not call market_report until they name one.");
+  }
+  if (requested.length > MAX_CITIES) {
+    return refuse("too_many", `market_report compares at most ${MAX_CITIES} cities. Ask the user which ${MAX_CITIES} to compare.`);
+  }
+
+  const places: string[][] = [];
+  const issues: CityIssue[] = [];
+  for (const place of requested) {
+    if (typeof place !== "string") {
+      places.push(place.values);
+      continue;
+    }
+    const match = matchCity(place, deps.vocab);
+    if ("values" in match) {
+      places.push(match.values);
+      if (match.kind === "fuzzy") issues.push({ input: place, kind: "typo", match: match.values[0] });
+    } else {
+      issues.push({ input: place, kind: match.kind === "none" ? "unknown" : "ambiguous", candidates: match.candidates.map((c) => c.value) });
+    }
+  }
+  const unique = [...new Map(places.map((names) => [names.join("|"), names])).values()];
+
+  const window = await windowOf(deps.db);
+  const reports: MarketReport[] = [];
+  for (const names of unique) {
+    const [rows, active] = await Promise.all([
+      deps.db.query<MarketSaleRow>(citySales(names)),
+      deps.db.query<{ type: string | null; total: number }>(activeByType(names)),
+    ]);
+    reports.push(buildReport(names[0], rows, active, window));
+  }
+
+  const unresolved = issues.filter((i) => i.kind !== "typo");
+  if (unresolved.length) {
+    const others = reports.length ? " You may answer for the other cities from `reports`. " + ANSWER : "";
+    return {
+      outcome: "ambiguous",
+      reports,
+      issues,
+      instruction: `Ask the user which city they meant, offering the \`candidates\` in \`issues\`.${others}`,
+    };
+  }
+  if (issues.length) {
+    const readings = issues.map((i) => `"I read ${i.input} as ${i.match}"`).join(", ");
+    return { outcome: "needs_confirmation", reports, issues, instruction: `First say how you read the city (${readings}), then answer. ${ANSWER}` };
+  }
+  return { outcome: "ok", reports, issues, instruction: ANSWER };
 }

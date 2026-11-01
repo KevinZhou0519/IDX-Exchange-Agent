@@ -18,19 +18,25 @@ const SALE_COLUMNS = [
   "ClosePrice", "ListPrice", "OriginalListPrice", "LivingArea", "DaysOnMarket", "CloseDate", "PostalCode", "PropertySubType",
 ].join(", ");
 
-/** Every sale in one city up to today (a few records carry typo dates in the future). */
-export function citySales(city: string): Sql {
+const placeholders = (n: number) => Array.from({ length: n }, () => "?").join(", ");
+
+/**
+ * Every sale in one place up to today (a few records carry typo dates in the
+ * future). `names` holds every dataset spelling of the place ("29 Palms",
+ * "Twentynine Palms").
+ */
+export function citySales(names: string[]): Sql {
   return {
-    sql: `SELECT ${SALE_COLUMNS} FROM california_sold WHERE City = ? AND CloseDate <= CURDATE()`,
-    params: [city],
+    sql: `SELECT ${SALE_COLUMNS} FROM california_sold WHERE City IN (${placeholders(names.length)}) AND CloseDate <= CURDATE()`,
+    params: names,
   };
 }
 
-/** Homes for sale now in one city, as rows of { type, total }. */
-export function activeByType(city: string): Sql {
+/** Homes for sale now in one place, as rows of { type, total }. */
+export function activeByType(names: string[]): Sql {
   return {
-    sql: "SELECT L_Type_ AS type, COUNT(*) AS total FROM rets_property WHERE L_City = ? GROUP BY L_Type_",
-    params: [city],
+    sql: `SELECT L_Type_ AS type, COUNT(*) AS total FROM rets_property WHERE L_City IN (${placeholders(names.length)}) GROUP BY L_Type_`,
+    params: names,
   };
 }
 

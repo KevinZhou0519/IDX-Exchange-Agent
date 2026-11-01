@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { buildReport, type MarketSaleRow } from "../src/index.ts";
+import {
+  buildReport,
+  createMemoryStore,
+  marketReport,
+  type Db,
+  type MarketSaleRow,
+  type ResolvedFilters,
+  type SearchDeps,
+  type Sql,
+} from "../src/index.ts";
+import { fixtureVocab } from "./fixtures/vocab.ts";
 
 const WINDOW = { first: "2026-03-18", last: "2026-09-17" };
 
@@ -176,5 +186,121 @@ describe("notes and small cities", () => {
     const r = report(many(30));
     expect(Object.keys(r).sort()).toEqual(["byMonth", "byType", "byZip", "change", "city", "notes", "overall", "supply", "window"]);
     expect(JSON.stringify(r)).not.toMatch(/ClosePrice|ListPrice|CloseDate/);
+  });
+});
+
+/** Services with a pretend database: 40 sales and 12 homes for sale in every place. */
+function marketDeps() {
+  const queries: Sql[] = [];
+  const db: Db = {
+    async query<T>(q: Sql) {
+      queries.push(q);
+      if (q.sql.includes("MIN(CloseDate)")) return [WINDOW] as T[];
+      if (q.sql.includes("FROM california_sold")) return many(40) as T[];
+      if (q.sql.includes("FROM rets_property")) return [{ type: "Condominium", total: 12 }] as T[];
+      throw new Error(`unexpected query: ${q.sql}`);
+    },
+    close: async () => {},
+  };
+  const deps: SearchDeps = {
+    store: createMemoryStore(),
+    db,
+    counter: { count: async () => 0, facet: async () => [], priceQuartiles: async () => [0, 0, 0] },
+    vocab: fixtureVocab,
+  };
+  return { deps, queries, salesQueries: () => queries.filter((q) => q.sql.includes("OriginalListPrice")) };
+}
+
+const savedIn = (city: string): ResolvedFilters => ({
+  cities: [{ values: [city], input: city, match: "exact", activeListings: 100 }],
+  sources: {},
+});
+
+describe("marketReport", () => {
+  it("one exact city gives one report and an answer instruction", async () => {
+    const { deps } = marketDeps();
+    const result = await marketReport(deps, "chat", { cities: ["Irvine"] });
+    expect(result.outcome).toBe("ok");
+    expect(result.reports.map((r) => r.city)).toEqual(["Irvine"]);
+    expect(result.reports[0].overall.sales).toBe(40);
+    expect(result.issues).toEqual([]);
+    expect(result.instruction).toMatch(/only numbers in `reports`/);
+  });
+
+  it("both spellings of a place go into one report", async () => {
+    const { deps, salesQueries } = marketDeps();
+    const result = await marketReport(deps, "chat", { cities: ["29 Palms"] });
+    expect(result.reports).toHaveLength(1);
+    expect(salesQueries()[0].params).toEqual(["29 Palms", "Twentynine Palms"]);
+  });
+
+  it("three cities give three reports; a fourth is refused before any query", async () => {
+    const { deps, queries } = marketDeps();
+    const three = await marketReport(deps, "chat", { cities: ["Irvine", "Tustin", "Orange"] });
+    expect(three.reports.map((r) => r.city)).toEqual(["Irvine", "Tustin", "Orange"]);
+    queries.length = 0;
+    const four = await marketReport(deps, "chat", { cities: ["Irvine", "Tustin", "Orange", "Pasadena"] });
+    expect(four).toMatchObject({ outcome: "too_many", reports: [] });
+    expect(four.instruction).toMatch(/at most 3/);
+    expect(queries).toEqual([]);
+  });
+
+  it("the same city twice gives one report", async () => {
+    const { deps } = marketDeps();
+    expect((await marketReport(deps, "chat", { cities: ["Irvine", "irvine"] })).reports).toHaveLength(1);
+  });
+
+  it("a typo gives needs_confirmation with the match and still a report", async () => {
+    const { deps } = marketDeps();
+    const result = await marketReport(deps, "chat", { cities: ["Irivine"] });
+    expect(result.outcome).toBe("needs_confirmation");
+    expect(result.issues).toEqual([{ input: "Irivine", kind: "typo", match: "Irvine" }]);
+    expect(result.reports.map((r) => r.city)).toEqual(["Irvine"]);
+    expect(result.instruction).toMatch(/I read Irivine as Irvine/);
+  });
+
+  it("an unknown city is ambiguous with candidates; other cities still get reports", async () => {
+    const { deps } = marketDeps();
+    const result = await marketReport(deps, "chat", { cities: ["Atlantis", "Tustin"] });
+    expect(result.outcome).toBe("ambiguous");
+    expect(result.issues).toMatchObject([{ input: "Atlantis", kind: "unknown" }]);
+    expect(result.issues[0].candidates!.length).toBeGreaterThan(0);
+    expect(result.reports.map((r) => r.city)).toEqual(["Tustin"]);
+    expect(result.instruction).toMatch(/which city/);
+  });
+
+  it("no city uses the saved search's city", async () => {
+    const { deps } = marketDeps();
+    deps.store.save("chat", savedIn("Pasadena"));
+    for (const input of [{}, { cities: [] }, { cities: null }]) {
+      const result = await marketReport(deps, "chat", input);
+      expect(result).toMatchObject({ outcome: "ok" });
+      expect(result.reports.map((r) => r.city)).toEqual(["Pasadena"]);
+    }
+  });
+
+  it("no city and no saved search asks for a city", async () => {
+    const { deps, queries } = marketDeps();
+    const result = await marketReport(deps, "chat", {});
+    expect(result).toMatchObject({ outcome: "needs_city", reports: [], issues: [] });
+    expect(result.instruction).toMatch(/Ask the user which city/);
+    expect(queries).toEqual([]);
+  });
+
+  it("malformed cities ask for a retry before any query", async () => {
+    const { deps, queries } = marketDeps();
+    for (const input of [{ cities: "Irvine" }, { cities: [7] }, { cities: [" "] }, null, "Irvine"]) {
+      const result = await marketReport(deps, "chat", input);
+      expect(result).toMatchObject({ outcome: "needs_retry", reports: [] });
+      expect(result.instruction).toMatch(/list of 1–3 city names/);
+    }
+    expect(queries).toEqual([]);
+  });
+
+  it("reads the data window once per database", async () => {
+    const { deps, queries } = marketDeps();
+    await marketReport(deps, "chat", { cities: ["Irvine"] });
+    await marketReport(deps, "chat", { cities: ["Tustin"] });
+    expect(queries.filter((q) => q.sql.includes("MIN(CloseDate)"))).toHaveLength(1);
   });
 });

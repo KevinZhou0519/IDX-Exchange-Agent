@@ -164,7 +164,7 @@ describe.skipIf(!available)("handbook conversation on the real data", () => {
 describe.skipIf(!available)("market queries on the real data", () => {
   it("returns every Irvine sale with only the 8 market columns, none in the future", async () => {
     const started = performance.now();
-    const rows = await db.query<MarketSaleRow>(citySales("Irvine"));
+    const rows = await db.query<MarketSaleRow>(citySales(["Irvine"]));
     expect(performance.now() - started).toBeLessThan(1000);
     expect(rows.length).toBeGreaterThan(1000);
     const today = new Date().toISOString().slice(0, 10);
@@ -176,13 +176,13 @@ describe.skipIf(!available)("market queries on the real data", () => {
   });
 
   it("uses the city/date index", async () => {
-    const q = citySales("Irvine");
+    const q = citySales(["Irvine"]);
     const [plan] = await db.query<{ key: string | null }>({ sql: `EXPLAIN ${q.sql}`, params: q.params });
     expect(plan.key).toBe("idx_sold_city_date");
   });
 
   it("active counts by type add up to the city's listing total", async () => {
-    const rows = await db.query<{ type: string | null; total: number | string }>(activeByType("Irvine"));
+    const rows = await db.query<{ type: string | null; total: number | string }>(activeByType(["Irvine"]));
     const sum = rows.reduce((n, r) => n + Number(r.total), 0);
     expect(sum).toBe(await total({ cities: [irvine], sources: {} }));
   });
@@ -198,8 +198,8 @@ describe.skipIf(!available)("market queries on the real data", () => {
 describe.skipIf(!available)("market report on the real data", () => {
   it("a big city gets every section, with a trend and supply", async () => {
     const [window] = await db.query<{ first: string; last: string }>(dataWindow());
-    const rows = await db.query<MarketSaleRow>(citySales("Irvine"));
-    const active = await db.query<{ type: string | null; total: number }>(activeByType("Irvine"));
+    const rows = await db.query<MarketSaleRow>(citySales(["Irvine"]));
+    const active = await db.query<{ type: string | null; total: number }>(activeByType(["Irvine"]));
     const report = buildReport("Irvine", rows, active, window);
     expect(report.overall.sales).toBe(rows.length);
     expect(report.overall.medianSaleToListPct).toBeGreaterThan(90);

@@ -9,12 +9,14 @@ import { Type } from "typebox";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import {
   ExtractionSchema,
+  MAX_CITIES,
   PAGE_SIZE,
   createDb,
   createDbCounter,
   createMessageLog,
   createSqliteStore,
   loadVocabulary,
+  marketReport,
   showListings,
   showSoldComps,
   updateSearch,
@@ -38,6 +40,24 @@ const PageSchema = Type.Object(
   { additionalProperties: false },
 );
 const NoParams = Type.Object({}, { additionalProperties: false });
+
+const MARKET_DESCRIPTION = [
+  "Market statistics for 1–3 California cities from recent sales: median price, $/sq ft, days on market, sale ÷ asking,",
+  "breakdowns by home type, ZIP and month, the trend between the first and last full month, and homes for sale now.",
+  "Leave `cities` out to use the city of this chat's home search. Every number in your answer must come from `reports`.",
+].join(" ");
+
+const MarketSchema = Type.Object(
+  {
+    cities: Type.Optional(
+      Type.Array(Type.String({ description: "City name only, no state (e.g. Irvine)" }), {
+        maxItems: MAX_CITIES,
+        description: "Cities to report on; leave out to use the city of the current home search",
+      }),
+    ),
+  },
+  { additionalProperties: false },
+);
 
 /** Evaluation runs only (scripts/eval-*.ts). Unset by default, so user messages are never written to disk. */
 function logForEval(tool: string, sessionKey: string, params: unknown, details: unknown) {
@@ -85,7 +105,7 @@ const NO_SESSION = {
 
 const UNAVAILABLE = {
   error: "search_unavailable",
-  instruction: "Tell the user the home search is temporarily unavailable and to try again in a moment. Do not retry now.",
+  instruction: "Tell the user the home data is temporarily unavailable and to try again in a moment. Do not retry now.",
 } as const;
 
 /** Runs a tool body, turning a missing session or a database failure into a plain instruction. */
@@ -169,16 +189,30 @@ export function createTools(deps: SearchDeps, sessionKey: string | undefined, me
         });
       },
     },
+    market_report: {
+      name: "market_report",
+      label: "Market report",
+      description: MARKET_DESCRIPTION,
+      parameters: MarketSchema,
+      async execute(_toolCallId: string, params: { cities?: string[] }) {
+        return guarded(sessionKey, async (key) => {
+          // Code Mode does not enforce the schema; marketReport checks the input itself.
+          const result = await marketReport(deps, key, params);
+          logForEval("market_report", key, params, result);
+          return textResult(JSON.stringify(result), result);
+        });
+      },
+    },
   };
 }
 
 export type IdxTools = ReturnType<typeof createTools>;
-const TOOL_NAMES = ["update_search", "show_listings", "show_sold_comps"] as const;
+const TOOL_NAMES = ["update_search", "show_listings", "show_sold_comps", "market_report"] as const;
 
 export default definePluginEntry({
   id: "idx-agent",
   name: "IDX Exchange Agent",
-  description: "Conversational property search over California MLS data.",
+  description: "Conversational property search and market statistics over California MLS data.",
   register(api) {
     // The build copies the vocabulary next to the bundle (dist/data/vocab.json).
     // Loaded once at startup; throws with the command to run if it is missing.
