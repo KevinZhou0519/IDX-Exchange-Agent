@@ -7,20 +7,20 @@ const SALE_COLUMNS = [
 
 describe("market queries", () => {
   it("city sales select the 8 columns for one city, without future dates", () => {
-    const q = citySales("Irvine");
+    const q = citySales(["Irvine"]);
     expect(q.params).toEqual(["Irvine"]);
     const columns = q.sql.match(/^SELECT (.+?) FROM/)![1].split(", ");
     expect(columns).toEqual(SALE_COLUMNS);
     expect(q.sql).toContain("FROM california_sold");
-    expect(q.sql).toContain("City = ?");
+    expect(q.sql).toContain("City IN (?)");
     expect(q.sql).toContain("CloseDate <= CURDATE()");
   });
 
   it("active listings are counted by type for one city", () => {
-    const q = activeByType("Irvine");
+    const q = activeByType(["Irvine"]);
     expect(q.params).toEqual(["Irvine"]);
     expect(q.sql).toContain("FROM rets_property");
-    expect(q.sql).toContain("L_City = ?");
+    expect(q.sql).toContain("L_City IN (?)");
     expect(q.sql).toContain("GROUP BY L_Type_");
   });
 
@@ -32,16 +32,23 @@ describe("market queries", () => {
     expect(q.sql).toContain("CloseDate <= CURDATE()");
   });
 
+  it("both spellings of one place are queried together", () => {
+    const q = citySales(["29 Palms", "Twentynine Palms"]);
+    expect(q.sql).toContain("City IN (?, ?)");
+    expect(q.params).toEqual(["29 Palms", "Twentynine Palms"]);
+    expect(activeByType(["29 Palms", "Twentynine Palms"]).params).toEqual(["29 Palms", "Twentynine Palms"]);
+  });
+
   it("user text never reaches SQL", () => {
     const evil = "Irvine'); DROP TABLE rets_property;--";
-    for (const q of [citySales(evil), activeByType(evil)]) {
+    for (const q of [citySales([evil]), activeByType([evil])]) {
       expect(q.sql).not.toContain("DROP");
       expect(q.params).toEqual([evil]);
     }
   });
 
   it("never selects personal or address columns", () => {
-    for (const q of [citySales("Irvine"), activeByType("Irvine"), dataWindow()]) {
+    for (const q of [citySales(["Irvine"]), activeByType(["Irvine"]), dataWindow()]) {
       expect(q.sql).not.toMatch(/Address|Agent|Office|Buyer|Remarks|DisplayId/i);
     }
   });

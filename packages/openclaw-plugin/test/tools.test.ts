@@ -9,8 +9,8 @@ const details = (result: { details: unknown }) => result.details as Record<strin
 const irvineMessage = { text: "homes in Irvine", attempt: 1, cities: [{ value: "Irvine", evidence: "Irvine" }] };
 
 describe("conversational search tools", () => {
-  it("names the three tools", () => {
-    expect(Object.keys(createTools(fakeDeps(3), "chat-a"))).toEqual(["update_search", "show_listings", "show_sold_comps"]);
+  it("names the four tools", () => {
+    expect(Object.keys(createTools(fakeDeps(3), "chat-a"))).toEqual(["update_search", "show_listings", "show_sold_comps", "market_report"]);
     expect(createTools(fakeDeps(3), "chat-a").update_search.name).toBe("update_search");
   });
 
@@ -133,6 +133,45 @@ describe("robustness", () => {
     expect(JSON.stringify(update)).not.toContain("ECONNREFUSED");
     const page = await tools.show_listings.execute("t2", { page: 1 });
     expect(details(page)).toMatchObject({ error: "search_unavailable" });
+    const market = await tools.market_report.execute("t3", { cities: ["Irvine"] });
+    expect(details(market)).toMatchObject({ error: "search_unavailable" });
+    expect(JSON.stringify(market)).not.toContain("ECONNREFUSED");
+  });
+});
+
+describe("market_report tool", () => {
+  it("returns reports, issues, outcome and instruction in details and content", async () => {
+    const result = await createTools(fakeDeps(3), "chat-a").market_report.execute("t1", { cities: ["Irvine"] });
+    expect(Object.keys(details(result)).sort()).toEqual(["instruction", "issues", "outcome", "reports"]);
+    expect(details(result).outcome).toBe("ok");
+    expect(details(result).reports[0]).toMatchObject({ city: "Irvine", overall: { sales: 40 } });
+    expect(JSON.parse(result.content[0].text)).toEqual(details(result));
+    expect(Object.hasOwn(details(result), "status")).toBe(false);
+  });
+
+  it("uses the city of this chat's saved search", async () => {
+    const deps = fakeDeps(3);
+    await createTools(deps, "chat-a").update_search.execute("t1", irvineMessage);
+    const mine = await createTools(deps, "chat-a").market_report.execute("t2", {});
+    expect(details(mine).reports.map((r: { city: string }) => r.city)).toEqual(["Irvine"]);
+    const other = await createTools(deps, "chat-b").market_report.execute("t3", {});
+    expect(details(other).outcome).toBe("needs_city");
+  });
+
+  it("needs a session like the other tools", async () => {
+    const result = await createTools(fakeDeps(3), undefined).market_report.execute("t1", { cities: ["Irvine"] });
+    expect(details(result)).toMatchObject({ error: "no_session" });
+  });
+
+  it("never sends listing addresses or agent names", async () => {
+    const deps = fakeDeps(3);
+    const result = await createTools(deps, "chat-a").market_report.execute("t1", { cities: ["Irvine", "Tustin"] });
+    expect(JSON.stringify(result)).not.toMatch(/Main St|Agent|Office|UnparsedAddress/);
+  });
+
+  it("limits cities to 3 in the schema", () => {
+    const schema = createTools(fakeDeps(3), "chat-a").market_report.parameters as unknown as { properties: { cities: { maxItems: number } } };
+    expect(schema.properties.cities.maxItems).toBe(3);
   });
 });
 
