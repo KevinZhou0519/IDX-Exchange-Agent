@@ -13,3 +13,4 @@ export * from "./merge.ts";
 export * from "./store.ts";
 export * from "./search.ts";
 export * from "./messages.ts";
+export * from "./market-sql.ts";

@@ -11,6 +11,10 @@ import {
   planNext,
   createDb,
   dbAvailable,
+  activeByType,
+  citySales,
+  dataWindow,
+  type MarketSaleRow,
   facetCounts,
   formatPage,
   listingsPage,
@@ -153,5 +157,39 @@ describe.skipIf(!available)("handbook conversation on the real data", () => {
 
     const comps = await showSoldComps(deps, chat);
     expect(comps.summary?.count).toBeGreaterThan(0);
+  });
+});
+
+describe.skipIf(!available)("market queries on the real data", () => {
+  it("returns every Irvine sale with only the 8 market columns, none in the future", async () => {
+    const started = performance.now();
+    const rows = await db.query<MarketSaleRow>(citySales("Irvine"));
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(rows.length).toBeGreaterThan(1000);
+    const today = new Date().toISOString().slice(0, 10);
+    expect(rows.every((r) => r.CloseDate <= today)).toBe(true);
+    expect(Object.keys(rows[0]).sort()).toEqual(
+      ["CloseDate", "ClosePrice", "DaysOnMarket", "ListPrice", "LivingArea", "OriginalListPrice", "PostalCode", "PropertySubType"],
+    );
+    expect(typeof rows[0].ClosePrice).toBe("number");
+  });
+
+  it("uses the city/date index", async () => {
+    const q = citySales("Irvine");
+    const [plan] = await db.query<{ key: string | null }>({ sql: `EXPLAIN ${q.sql}`, params: q.params });
+    expect(plan.key).toBe("idx_sold_city_date");
+  });
+
+  it("active counts by type add up to the city's listing total", async () => {
+    const rows = await db.query<{ type: string | null; total: number | string }>(activeByType("Irvine"));
+    const sum = rows.reduce((n, r) => n + Number(r.total), 0);
+    expect(sum).toBe(await total({ cities: [irvine], sources: {} }));
+  });
+
+  it("the data window ends no later than today", async () => {
+    const [window] = await db.query<{ first: string; last: string }>(dataWindow());
+    const today = new Date().toISOString().slice(0, 10);
+    expect(window.first < window.last).toBe(true);
+    expect(window.last <= today).toBe(true);
   });
 });
