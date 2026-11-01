@@ -27,4 +27,11 @@ describe("plugin manifest and skills", () => {
     expect(skill).toContain("market_report");
     expect(read("../skills/property-search/SKILL.md")).toContain("market-stats");
   });
+
+  it("the market-stats description itself carries the decline rule, since only descriptions are always in the prompt", () => {
+    const description = read("../skills/market-stats/SKILL.md").match(/^description: (.+)$/m)![1];
+    expect(description).toMatch(/who lives/i);
+    expect(description).toMatch(/safe/i);
+    expect(description).toMatch(/decline/i);
+  });
 });
