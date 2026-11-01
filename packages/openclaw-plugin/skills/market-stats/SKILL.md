@@ -1,6 +1,6 @@
 ---
 name: market-stats
-description: Use when the user asks about the housing market in a California city rather than for listings — prices, price per sq ft, how fast homes sell, sale vs. asking price, trends, supply, comparing cities, or "is now a good time to buy/sell".
+description: Use when the user asks about the housing market in a California city rather than for listings — prices, price per sq ft, how fast homes sell, sale vs. asking price, trends, supply, comparing cities, or "is now a good time to buy/sell". Also read it BEFORE answering any question about who lives in an area (race, religion, families, "what kind of people"), whether an area is safe or a good neighborhood, or who owns or sold a home — those must be declined, never answered from the web or memory.
 ---
 
 # Market statistics
