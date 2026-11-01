@@ -14,6 +14,7 @@ import {
   activeByType,
   citySales,
   dataWindow,
+  buildReport,
   type MarketSaleRow,
   facetCounts,
   formatPage,
@@ -191,5 +192,22 @@ describe.skipIf(!available)("market queries on the real data", () => {
     const today = new Date().toISOString().slice(0, 10);
     expect(window.first < window.last).toBe(true);
     expect(window.last <= today).toBe(true);
+  });
+});
+
+describe.skipIf(!available)("market report on the real data", () => {
+  it("a big city gets every section, with a trend and supply", async () => {
+    const [window] = await db.query<{ first: string; last: string }>(dataWindow());
+    const rows = await db.query<MarketSaleRow>(citySales("Irvine"));
+    const active = await db.query<{ type: string | null; total: number }>(activeByType("Irvine"));
+    const report = buildReport("Irvine", rows, active, window);
+    expect(report.overall.sales).toBe(rows.length);
+    expect(report.overall.medianSaleToListPct).toBeGreaterThan(90);
+    expect(report.overall.medianSaleToListPct).toBeLessThan(110);
+    expect(report.byType.length).toBeGreaterThan(1);
+    expect(report.byZip.length).toBeGreaterThan(1);
+    expect(report.byMonth.length).toBeGreaterThan(1);
+    expect(report.change).not.toBeNull();
+    expect(report.supply.monthsOfSupply).toBeGreaterThan(0);
   });
 });
