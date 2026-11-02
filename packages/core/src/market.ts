@@ -138,7 +138,8 @@ function supplyOf(rows: MarketSaleRow[], activeListings: number, fullMonths: str
   const perMonth = inFull / fullMonths.length;
   return {
     activeListings,
-    salesPerMonth: round(perMonth, 1),
+    // "about 181 sales a month" reads better than 180.6, and leaves the model nothing to round.
+    salesPerMonth: perMonth >= 10 ? Math.round(perMonth) : round(perMonth, 1),
     monthsOfSupply: perMonth ? round(activeListings / perMonth, 1) : null,
   };
 }
@@ -241,9 +242,16 @@ export type MarketResult = {
   instruction: string;
 };
 
+// The answer rules travel with every result: the model reads the tool result
+// even when it has not opened the market-stats skill.
 const ANSWER =
   "Answer the user's question using only numbers in `reports`: pick the ones that answer it, quote them as given " +
-  "(rounding like $1,245,000 → $1.25M is fine) and pass on the relevant `notes`. Never calculate a number yourself.";
+  "(rounding like $1,245,000 → $1.25M is fine) and pass on the relevant `notes`. Never calculate a number yourself, and add no facts from outside `reports`. " +
+  "Format: for buy/sell advice or price predictions, start with \"I can't tell you whether to buy; this is market data, " +
+  "not financial advice. Here's what it shows.\" With 4 or more bullets (comparisons too), put before the bullets, one sentence " +
+  "starting \"In short:\". Then short bullets in plain words (\"buyers paid about 98% of the asking price\", \"homes took about " +
+  "24 days to sell\"). Supply: \"<activeListings> homes are for sale now. At the current pace of about <salesPerMonth> " +
+  "sales a month, it would take about <monthsOfSupply> months to sell them all.\" Any follow-up question last.";
 
 const refuse = (outcome: "needs_city" | "needs_retry" | "too_many", instruction: string): MarketResult => ({
   outcome,
