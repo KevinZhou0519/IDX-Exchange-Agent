@@ -13,7 +13,8 @@
     "build:plugin": "node scripts/build-plugin.ts",
     "test:db": "vitest run --config vitest.integration.config.ts",
     "setup:db": "node scripts/setup-db.ts",
-    "eval:chat": "caffeinate -i node scripts/eval-conversation.ts"
+    "eval:chat": "caffeinate -i node scripts/eval-conversation.ts",
+    "eval:market": "caffeinate -i node scripts/eval-conversation.ts --fixture market-conversations.json"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
