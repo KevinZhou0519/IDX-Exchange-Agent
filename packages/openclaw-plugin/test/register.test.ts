@@ -34,5 +34,6 @@ describe("plugin manifest and skills", () => {
     expect(description).toMatch(/safe/i);
     expect(description).toMatch(/decline/i);
     expect(description).toMatch(/database/i);
+    expect(description).toMatch(/only from the market_report tool/);
   });
 });

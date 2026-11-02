@@ -150,6 +150,11 @@ describe("months", () => {
     expect(r.notes.join(" ")).toMatch(/too few monthly sales/i);
   });
 
+  it("a pace of 10 or more sales a month is a whole number; months of supply uses the exact pace", () => {
+    const rows = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08"].flatMap((m, i) => many(i < 3 ? 12 : 11, { CloseDate: `${m}-10` }));
+    expect(report(rows, [{ type: "Condominium", total: 46 }]).supply).toEqual({ activeListings: 46, salesPerMonth: 12, monthsOfSupply: 4 });
+  });
+
   it("months of supply from full-month sales", () => {
     const rows = [
       ...many(50, { CloseDate: "2026-03-20" }), // partial month: not counted in the pace
@@ -247,6 +252,10 @@ describe("marketReport", () => {
     expect(result.reports[0].overall.sales).toBe(40);
     expect(result.issues).toEqual([]);
     expect(result.instruction).toMatch(/only numbers in `reports`/);
+    expect(result.instruction).toMatch(/before the bullets, one sentence starting "In short:"/);
+    expect(result.instruction).toMatch(/no facts from outside `reports`/);
+    expect(result.instruction).toMatch(/homes are for sale now\. At the current pace/);
+    expect(result.instruction).toMatch(/question last/);
   });
 
   it("both spellings of a place go into one report", async () => {
