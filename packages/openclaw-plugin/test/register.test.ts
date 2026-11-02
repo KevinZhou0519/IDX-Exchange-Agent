@@ -33,5 +33,6 @@ describe("plugin manifest and skills", () => {
     expect(description).toMatch(/who lives/i);
     expect(description).toMatch(/safe/i);
     expect(description).toMatch(/decline/i);
+    expect(description).toMatch(/database/i);
   });
 });
