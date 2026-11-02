@@ -82,6 +82,11 @@ describe("breakdowns", () => {
     expect(r.supply.activeListings).toBe(37);
   });
 
+  it("ZIP+4 codes count under their 5-digit ZIP", () => {
+    const r = report([...many(6, { PostalCode: "90001" }), ...many(6, { PostalCode: "90001-1234" })]);
+    expect(r.byZip.map((z) => [z.zip, z.sales])).toEqual([["90001", 12]]);
+  });
+
   it("each type carries its own homes for sale and months of supply", () => {
     const fullMonths = ["2026-04", "2026-05", "2026-06", "2026-07", "2026-08"];
     const rows = fullMonths.flatMap((m) => many(4, { CloseDate: `${m}-10` }));
@@ -125,6 +130,17 @@ describe("months", () => {
       ...many(10, { CloseDate: "2026-08-10", ClosePrice: 985_000 }),
     ];
     expect(report(rows).change!.price).toMatchObject({ pct: -1.5, direction: "flat" });
+  });
+
+  it("a trend that cannot be computed is left out on its own", () => {
+    const rows = [
+      ...many(10, { CloseDate: "2026-04-10", DaysOnMarket: 0 }),
+      ...many(10, { CloseDate: "2026-08-10", ClosePrice: 1_100_000, ListPrice: 1_100_000, DaysOnMarket: 20 }),
+    ];
+    const r = report(rows);
+    expect(r.change!.price).toMatchObject({ pct: 10, direction: "up" });
+    expect(r.change!.daysOnMarket).toBeNull();
+    expect(r.notes.join(" ")).not.toMatch(/too few monthly sales/i);
   });
 
   it("no trend when a full month at either end has under 10 sales", () => {
@@ -180,6 +196,12 @@ describe("notes and small cities", () => {
     expect(notes).toMatch(/mix of/);
     expect(notes).toMatch(/under about 6 months usually favors sellers/);
     expect(notes).toMatch(/partial months: March 2026 and September 2026/i);
+  });
+
+  it("does not claim there is no 12-month data when the window has 13 full months or more", () => {
+    const notes = report(many(30), [], { first: "2025-01-01", last: "2026-08-31" }).notes.join("\n");
+    expect(notes).toContain("January 1, 2025 to August 31, 2026");
+    expect(notes).not.toMatch(/no 12-month/);
   });
 
   it("the report is aggregates only", () => {
@@ -269,10 +291,18 @@ describe("marketReport", () => {
     expect(result.instruction).toMatch(/which city/);
   });
 
+  it("a typo next to an unknown city still asks to say how the typo was read", async () => {
+    const { deps } = marketDeps();
+    const result = await marketReport(deps, "chat", { cities: ["Irivine", "Atlantis"] });
+    expect(result.outcome).toBe("ambiguous");
+    expect(result.instruction).toMatch(/which city/);
+    expect(result.instruction).toMatch(/I read Irivine as Irvine/);
+  });
+
   it("no city uses the saved search's city", async () => {
     const { deps } = marketDeps();
     deps.store.save("chat", savedIn("Pasadena"));
-    for (const input of [{}, { cities: [] }, { cities: null }]) {
+    for (const input of [{}, { cities: [] }, { cities: null }, null, undefined]) {
       const result = await marketReport(deps, "chat", input);
       expect(result).toMatchObject({ outcome: "ok" });
       expect(result.reports.map((r) => r.city)).toEqual(["Pasadena"]);
@@ -289,7 +319,7 @@ describe("marketReport", () => {
 
   it("malformed cities ask for a retry before any query", async () => {
     const { deps, queries } = marketDeps();
-    for (const input of [{ cities: "Irvine" }, { cities: [7] }, { cities: [" "] }, null, "Irvine"]) {
+    for (const input of [{ cities: "Irvine" }, { cities: [7] }, { cities: [" "] }, "Irvine", 7]) {
       const result = await marketReport(deps, "chat", input);
       expect(result).toMatchObject({ outcome: "needs_retry", reports: [] });
       expect(result.instruction).toMatch(/list of 1–3 city names/);

@@ -30,7 +30,7 @@ type Expect = {
   noMarket?: boolean;
   /** The reply declines (part of) the question. */
   declines?: boolean;
-  /** The reply starts with the "I can't tell you whether to buy" disclaimer. */
+  /** The reply starts with the "I can't tell you whether to buy/sell" disclaimer. */
   disclaimer?: boolean;
   /** The reply has an "In short:" summary. */
   summary?: boolean;
@@ -64,7 +64,7 @@ const readCalls = (path: string): Call[] =>
 const MAX_CALLS_PER_TURN = 3;
 
 const DECLINE = /\b(?:can(?:'|’)?t|cannot|can not|unable to|not able to|won(?:'|’)?t) (?:\w+ ){0,4}?(?:help|share|answer|provide|discuss|ignore)|\bcan only (?:answer|help)/i;
-const DISCLAIMER = /^[\s*_#>]*I can(?:'|’)?t tell you whether to buy/i;
+const DISCLAIMER = /^[\s*_#>]*I can(?:'|’)?t tell you whether to (?:buy|sell)/i;
 
 /**
  * Problems with one turn's calls and reply against its expectation; empty
