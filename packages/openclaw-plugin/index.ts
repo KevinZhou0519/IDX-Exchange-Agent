@@ -45,6 +45,7 @@ const MARKET_DESCRIPTION = [
   "Market statistics for 1–3 California cities from recent sales: median price, $/sq ft, days on market, sale ÷ asking,",
   "breakdowns by home type, ZIP and month, the trend between the first and last full month, and homes for sale now.",
   "Leave `cities` out to use the city of this chat's home search. Every number in your answer must come from `reports`.",
+  "Not for what similar homes sold for during a home search: use show_sold_comps for that.",
 ].join(" ");
 
 const MarketSchema = Type.Object(

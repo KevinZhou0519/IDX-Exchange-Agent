@@ -120,6 +120,8 @@ user you could not process it and ask them to rephrase.
   returned, and do not call any other tool for "more".
 - "What did similar homes sell for?", "recent sales", "comps" →
   `show_sold_comps`. Send its text as returned.
+- "What did similar homes sell for?" during a search → `show_sold_comps` (sales
+  like this search), not `market_report`.
 - Questions about the market itself ("how's the market there?", price per sq ft
   in a city, trends, "is now a good time to buy?") → follow the `market-stats`
   skill and call `market_report` (leave `cities` out to use this search's city).
