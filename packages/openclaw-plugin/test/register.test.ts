@@ -21,6 +21,15 @@ describe("plugin manifest and skills", () => {
     expect(manifest.contracts.tools).toEqual(Object.keys(createTools(fakeDeps(1), "chat")));
   });
 
+  it("market questions and sold homes like this search are kept apart in every description", async () => {
+    const { createTools } = await import("../index.ts");
+    const { fakeDeps } = await import("./fake-deps.ts");
+    const description = read("../skills/market-stats/SKILL.md").match(/^description: (.+)$/m)![1];
+    expect(description).toMatch(/similar homes sold for.*show_sold_comps/i);
+    expect(createTools(fakeDeps(1), "chat").market_report.description).toMatch(/similar homes sold for.*show_sold_comps/i);
+    expect(read("../skills/property-search/SKILL.md")).toMatch(/similar homes sell for.*show_sold_comps/is);
+  });
+
   it("ships the market-stats skill, and the search skill points market questions to it", () => {
     const skill = read("../skills/market-stats/SKILL.md");
     expect(skill).toMatch(/^---\nname: market-stats\ndescription: .+\n---\n/);
