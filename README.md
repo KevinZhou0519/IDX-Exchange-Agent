@@ -14,8 +14,8 @@ WhatsApp; the agent answers from California MLS data: active listings
 | 2 | Natural-language property search | Done |
 | 3 | MySQL integration (parameterized queries, pagination) | Done |
 | 4 | Multi-turn conversational search | Done |
-| 5 | Market statistics from sold comps | Next |
-| 6 | Embeddings and semantic search | |
+| 5 | Market statistics from sold comps | Done |
+| 6 | Embeddings and semantic search | Next |
 | 7 | Recommendation engine | |
 | 8 | RAG over MLS field definitions | |
 | 9 | Multi-agent orchestration | |
@@ -30,6 +30,11 @@ WhatsApp → OpenClaw Gateway → agent (Gemini) → update_search
    → checks the message's filters against the data → updates this chat's saved search
    → counts matches in MySQL → show cards (≤ 20) / ask one question with real counts / suggest what to relax
    → reply over WhatsApp;  "more" → show_listings · "what did similar homes sell for?" → show_sold_comps
+
+"How's the market in Irvine?" → market_report → the same 3 read-only queries every time
+   → report computed in code (medians, by type / ZIP / month, April→August change, supply)
+   → the market-stats skill picks the numbers that answer the question and explains them;
+     who-lives-there, safety, personal and system questions are declined
 ```
 
 ## Running it locally
@@ -74,12 +79,14 @@ dumps and the `data/` folder.
 packages/
   core/                    pure logic, no OpenClaw: filter format and checks, dataset
                            matching, SQL builders, property cards, narrowing planner,
-                           saved searches (SQLite), the search service
-  openclaw-plugin/         OpenClaw adapter: update_search, show_listings and
-                           show_sold_comps tools + the property-search skill
+                           saved searches (SQLite), the search service, market reports
+  openclaw-plugin/         OpenClaw adapter: update_search, show_listings,
+                           show_sold_comps and market_report tools + the
+                           property-search and market-stats skills
 fixtures/
   queries.json             single-message test queries (simulated and real-agent)
   conversations.json       scripted multi-turn conversations for the real agent
+  market-conversations.json  market and sensitive-question conversations for the real agent
 scripts/
   setup-db.ts              read-only MySQL user + sold-comps index
   build-vocab.ts           export cities and property types from MySQL (local only)
@@ -87,6 +94,7 @@ scripts/
   link-openclaw.sh         link the local OpenClaw SDK for tests
   eval-llm.ts              score the real agent on single messages
   eval-conversation.ts     score the real agent on whole conversations
+  lib/                     eval helpers (reply text, subset match, number grounding)
 .env.example               environment variables the agent needs
 ```
 
@@ -106,9 +114,17 @@ Requires Node 24.16+ and an OpenClaw checkout at `~/Developer/openclaw`
 | `corepack pnpm build:plugin` | Build `packages/openclaw-plugin/dist`; restart the gateway afterwards |
 | `corepack pnpm eval` | Score the real agent on every single-message test query (gateway stopped, lid open) |
 | `corepack pnpm eval:chat` | Score the real agent on scripted multi-turn conversations (gateway stopped, lid open) |
+| `corepack pnpm eval:market` | Same, for market questions: also checks declines, the advice disclaimer and that every number comes from the data |
 
 Install the plugin once (from the OpenClaw checkout):
 
 ```bash
 corepack pnpm openclaw plugins install --link "<repo>/packages/openclaw-plugin/dist"
+```
+
+When a build adds a new tool, OpenClaw asks for capability consent again
+before it loads the plugin:
+
+```bash
+corepack pnpm openclaw plugins enable idx-agent --accept-capabilities
 ```
