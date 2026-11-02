@@ -15,6 +15,8 @@ export const MIN_GROUP_SALES = 10;
 export const MIN_CITY_SALES = 5;
 /** Below this, numbers come with a caution note. */
 export const FEW_SALES = 30;
+/** With at least this many full months, the same month a year apart is in the data. */
+const YEAR_OVER_YEAR_MONTHS = 13;
 /** A change smaller than this (in %) is "flat". */
 export const FLAT_PCT = 2;
 export const BALANCED_SUPPLY_MONTHS = 6;
@@ -47,7 +49,8 @@ export type MarketReport = {
   byType: ({ type: string; supply: Supply } & Stats)[];
   byZip: ({ zip: string } & Stats)[];
   byMonth: MonthStats[];
-  change: { from: string; to: string; price: Trend; pricePerSqft: Trend; daysOnMarket: Trend } | null;
+  /** Each trend is null on its own when it cannot be computed; the whole change is null when none can. */
+  change: { from: string; to: string; price: Trend | null; pricePerSqft: Trend | null; daysOnMarket: Trend | null } | null;
   supply: Supply;
   notes: string[];
 };
@@ -161,7 +164,9 @@ export function buildReport(
   const fullMonths = months.filter((m) => !m.partial).map((m) => m.month);
   const partialMonths = months.filter((m) => m.partial).map((m) => monthName(m.month));
   const notes = [
-    `Sales cover ${dateName(window.first)} to ${dateName(window.last)}; there is no 12-month or year-over-year data.`,
+    fullMonths.length >= YEAR_OVER_YEAR_MONTHS
+      ? `Sales cover ${dateName(window.first)} to ${dateName(window.last)}.`
+      : `Sales cover ${dateName(window.first)} to ${dateName(window.last)}; there is no 12-month or year-over-year data.`,
     ...(partialMonths.length ? [`Partial months: ${partialMonths.join(" and ")} (fewer days of data, so fewer sales).`] : []),
     "Homes for sale are a current snapshot; sales are from the period above.",
     "Monthly medians swing with the mix of condos and houses sold; describe the trend from the first to the last full month, not month by month.",
@@ -189,7 +194,8 @@ export function buildReport(
     .filter(([, group]) => group.length >= MIN_GROUP_SALES)
     .sort((a, b) => b[1].length - a[1].length)
     .map(([type, group]) => ({ type, ...stats(group), supply: supplyOf(group, activeByType.get(type) ?? 0, fullMonths) }));
-  const byZip = [...groupBy(rows, (r) => r.PostalCode?.trim() || null)]
+  // ZIP+4 codes ("90001-1234") count under their 5-digit ZIP.
+  const byZip = [...groupBy(rows, (r) => r.PostalCode?.trim().slice(0, 5) || null)]
     .filter(([, group]) => group.length >= MIN_GROUP_SALES)
     .sort((a, b) => b[1].length - a[1].length)
     .map(([zip, group]) => ({ zip, ...stats(group) }));
@@ -209,7 +215,7 @@ export function buildReport(
     const price = trend(a.medianPrice, b.medianPrice);
     const pricePerSqft = trend(a.medianPricePerSqft, b.medianPricePerSqft);
     const daysOnMarket = trend(a.medianDaysOnMarket, b.medianDaysOnMarket);
-    if (price && pricePerSqft && daysOnMarket) change = { from: start, to: end!, price, pricePerSqft, daysOnMarket };
+    if (price || pricePerSqft || daysOnMarket) change = { from: start, to: end!, price, pricePerSqft, daysOnMarket };
   }
   if (!change) notes.push("Too few monthly sales to show a trend between the first and last full month.");
 
@@ -258,10 +264,13 @@ function windowOf(db: Db): Promise<{ first: string; last: string }> {
   return window;
 }
 
-/** City names from the tool call, or the saved search's cities; null when the input is malformed. */
+/**
+ * City names from the tool call, or the saved search's cities when none are
+ * named (including a call with no arguments); null when the input is malformed.
+ */
 function requestedPlaces(deps: SearchDeps, sessionKey: string, input: unknown): string[] | { values: string[] }[] | null {
-  if (typeof input !== "object" || input === null) return null;
-  const cities = (input as { cities?: unknown }).cities;
+  if (input !== undefined && input !== null && typeof input !== "object") return null;
+  const cities = (input as { cities?: unknown } | null | undefined)?.cities;
   if (cities === undefined || cities === null || (Array.isArray(cities) && cities.length === 0)) {
     return (deps.store.get(sessionKey)?.filters.cities ?? []).map((c) => ({ values: c.values }));
   }
@@ -312,9 +321,12 @@ export async function marketReport(deps: SearchDeps, sessionKey: string, input: 
     reports.push(buildReport(names[0], rows, active, window));
   }
 
-  const unresolved = issues.filter((i) => i.kind !== "typo");
-  if (unresolved.length) {
-    const others = reports.length ? " You may answer for the other cities from `reports`. " + ANSWER : "";
+  const typos = issues.filter((i) => i.kind === "typo");
+  const readCities = typos.length
+    ? `First say how you read the city (${typos.map((i) => `"I read ${i.input} as ${i.match}"`).join(", ")}), then answer. `
+    : "";
+  if (typos.length < issues.length) {
+    const others = reports.length ? ` You may answer for the other cities from \`reports\`. ${readCities}${ANSWER}` : "";
     return {
       outcome: "ambiguous",
       reports,
@@ -322,9 +334,6 @@ export async function marketReport(deps: SearchDeps, sessionKey: string, input: 
       instruction: `Ask the user which city they meant, offering the \`candidates\` in \`issues\`.${others}`,
     };
   }
-  if (issues.length) {
-    const readings = issues.map((i) => `"I read ${i.input} as ${i.match}"`).join(", ");
-    return { outcome: "needs_confirmation", reports, issues, instruction: `First say how you read the city (${readings}), then answer. ${ANSWER}` };
-  }
+  if (typos.length) return { outcome: "needs_confirmation", reports, issues, instruction: readCities + ANSWER };
   return { outcome: "ok", reports, issues, instruction: ANSWER };
 }
