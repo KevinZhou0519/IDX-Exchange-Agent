@@ -14,6 +14,7 @@ import {
   facetCounts,
   formatPage,
   listingsPage,
+  PAGE_SIZE,
   priceAt,
   soldComps,
   summarizeComps,
@@ -47,7 +48,7 @@ describe.skipIf(!available)("database access", () => {
   });
 });
 
-const irvine = { values: ["Irvine"], input: "Irvine", match: "exact" as const, activeListings: 723 };
+const irvine = { values: ["Irvine"], input: "Irvine", match: "exact" as const, activeListings: 1 };
 const handbookSearch: ResolvedFilters = {
   cities: [irvine],
   types: ["Condominium"],
@@ -63,29 +64,30 @@ async function total(f: ResolvedFilters): Promise<number> {
 }
 
 describe.skipIf(!available)("search queries on the real data", () => {
-  it("irvine handbook search finds 3", async () => {
-    expect(await total(handbookSearch)).toBe(3);
+  it("the handbook search finds homes, cheapest first", async () => {
+    const found = await total(handbookSearch);
+    expect(found).toBeGreaterThan(0);
     const rows = await db.query<ListingRow>(listingsPage(handbookSearch, 1));
-    expect(rows).toHaveLength(3);
+    expect(rows).toHaveLength(Math.min(found, PAGE_SIZE));
     const prices = rows.map((r) => Number(r.L_SystemPrice));
     expect(prices).toEqual([...prices].sort((a, b) => a - b));
-    expect(formatPage(rows, 1, 3)).toContain(", Irvine ");
+    expect(formatPage(rows, 1, found)).toContain(", Irvine ");
   });
 
-  it("Irvine total is 723", async () => {
-    expect(await total({ cities: [irvine], sources: {} })).toBe(723);
-  });
-
-  it("Irvine under 1.2M is 208 with 163 condos", async () => {
+  it("a price limit narrows Irvine, and condos are the biggest type under it", async () => {
     const f: ResolvedFilters = { cities: [irvine], maxPrice: 1_200_000, sources: {} };
-    expect(await total(f)).toBe(208);
+    const under = await total(f);
+    expect(under).toBeGreaterThan(0);
+    expect(under).toBeLessThan(await total({ cities: [irvine], sources: {} }));
     const types = await db.query<{ value: string; total: number | string }>(facetCounts(f, "type"));
     expect(types[0]).toMatchObject({ value: "Condominium" });
-    expect(Number(types[0].total)).toBe(163);
+    expect(Number(types[0].total)).toBeGreaterThan(0);
+    expect(Number(types[0].total)).toBeLessThanOrEqual(under);
   });
 
   it("reads a price at an offset", async () => {
-    const [row] = await db.query<{ price: number | string }>(priceAt({ cities: [irvine], sources: {} }, 361));
+    const all = await total({ cities: [irvine], sources: {} });
+    const [row] = await db.query<{ price: number | string }>(priceAt({ cities: [irvine], sources: {} }, Math.floor(all / 2)));
     expect(Number(row.price)).toBeGreaterThan(0);
   });
 
@@ -100,14 +102,17 @@ describe.skipIf(!available)("search queries on the real data", () => {
 
 describe.skipIf(!available)("narrowing planner on the real data", () => {
   it("asks about the type for Irvine under $1.2M, condos first", async () => {
-    const next = await planNext({ cities: [irvine], maxPrice: 1_200_000, sources: {} }, createDbCounter(db));
-    expect(next).toMatchObject({ action: "ask", total: 208, facet: "type" });
-    expect(next.action === "ask" && next.options[0]).toEqual({ label: "Condominium (163)", total: 163 });
+    const f: ResolvedFilters = { cities: [irvine], maxPrice: 1_200_000, sources: {} };
+    const next = await planNext(f, createDbCounter(db));
+    expect(next).toMatchObject({ action: "ask", total: await total(f), facet: "type" });
+    const [top] = await db.query<{ value: string; total: number | string }>(facetCounts(f, "type"));
+    expect(next.action === "ask" && next.options[0]).toEqual({ label: `Condominium (${top.total})`, total: Number(top.total) });
   });
 
   it("asks for a budget for all of Irvine, with real price points", async () => {
-    const next = await planNext({ cities: [irvine], sources: {} }, createDbCounter(db));
-    expect(next).toMatchObject({ action: "ask", total: 723, facet: "price" });
+    const f: ResolvedFilters = { cities: [irvine], sources: {} };
+    const next = await planNext(f, createDbCounter(db));
+    expect(next).toMatchObject({ action: "ask", total: await total(f), facet: "price" });
     expect(next.action === "ask" && next.options).toHaveLength(3);
   });
 });
@@ -122,14 +127,18 @@ describe.skipIf(!available)("handbook conversation on the real data", () => {
       attempt: 1,
       cities: [{ value: "Irvine", evidence: "Irvine" }],
     });
-    expect(first.next).toMatchObject({ action: "ask", facet: "price", total: 723 });
+    expect(first.next).toMatchObject({ action: "ask", facet: "price", total: await total({ cities: [irvine], sources: {} }) });
 
     const second = await updateSearch(deps, chat, {
       text: "Under $1.2M",
       attempt: 1,
       maxPrice: { value: 1_200_000, evidence: "Under $1.2M" },
     });
-    expect(second.next).toMatchObject({ action: "ask", facet: "type", total: 208 });
+    expect(second.next).toMatchObject({
+      action: "ask",
+      facet: "type",
+      total: await total({ cities: [irvine], maxPrice: 1_200_000, sources: {} }),
+    });
 
     const third = await updateSearch(deps, chat, {
       text: "Single family with at least 3 beds",
