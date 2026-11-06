@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyUpdate, type ResolvedFilters } from "../src/index.ts";
 
-const irvine = { values: ["Irvine"], input: "Irvine", match: "exact" as const, activeListings: 723 };
+const irvine = { values: ["Irvine"], input: "Irvine", match: "exact" as const, activeListings: 600 };
 const saved: ResolvedFilters = {
   cities: [irvine],
   maxPrice: 1_200_000,

@@ -60,8 +60,8 @@ function deps(total: number) {
   const counter: Counter = {
     count: async () => total,
     facet: async () => [
-      { value: "Condominium", total: 163 },
-      { value: "Townhouse", total: 26 },
+      { value: "Condominium", total: 120 },
+      { value: "Townhouse", total: 40 },
     ],
     priceQuartiles: async () => [900_000, 1_250_000, 2_500_000],
   };
@@ -73,16 +73,16 @@ const irvine = { value: "Irvine", evidence: "Irvine" };
 
 describe("updateSearch", () => {
   it("first message saves and plans", async () => {
-    const { deps: d } = deps(723);
+    const { deps: d } = deps(600);
     const result = await updateSearch(d, "chat-a", { text: "homes in Irvine", attempt: 1, cities: [irvine] });
     expect(result.outcome).toBe("ok");
     expect(result.saved.cities?.[0].values).toEqual(["Irvine"]);
     expect(d.store.get("chat-a")?.filters.cities?.[0].values).toEqual(["Irvine"]);
-    expect(result.next).toMatchObject({ action: "ask", facet: "price", total: 723 });
+    expect(result.next).toMatchObject({ action: "ask", facet: "price", total: 600 });
   });
 
   it("follow-up keeps earlier filters", async () => {
-    const { deps: d } = deps(208);
+    const { deps: d } = deps(200);
     await updateSearch(d, "chat-a", { text: "homes in Irvine", attempt: 1, cities: [irvine] });
     const result = await updateSearch(d, "chat-a", {
       text: "under $1.2M",
@@ -116,7 +116,7 @@ describe("updateSearch", () => {
   });
 
   it("keeps chats apart", async () => {
-    const { deps: d } = deps(723);
+    const { deps: d } = deps(600);
     await updateSearch(d, "chat-a", { text: "homes in Irvine", attempt: 1, cities: [irvine] });
     const other = await updateSearch(d, "chat-b", { text: "3 beds", attempt: 1, minBeds: { value: 3, evidence: "3 beds" } });
     expect(other.saved.cities).toBeUndefined();
@@ -236,7 +236,7 @@ describe("showListings", () => {
 
 describe("showSoldComps", () => {
   it("showSoldComps uses the saved search", async () => {
-    const { deps: d, queries } = deps(723);
+    const { deps: d, queries } = deps(600);
     await updateSearch(d, "chat-a", { text: "homes in Irvine", attempt: 1, cities: [irvine] });
     const comps = await showSoldComps(d, "chat-a");
     expect(queries.at(-1)?.sql).toContain("FROM california_sold");

@@ -29,7 +29,7 @@ export function fakeDeps(total: number): SearchDeps & { queries: Sql[] } {
   };
   const counter: Counter = {
     count: async () => total,
-    facet: async () => [{ value: "Condominium", total: 163 }, { value: "Townhouse", total: 26 }],
+    facet: async () => [{ value: "Condominium", total: 120 }, { value: "Townhouse", total: 40 }],
     priceQuartiles: async () => [900_000, 1_250_000, 2_500_000],
   };
   return { store: createMemoryStore(), db, counter, vocab: fixtureVocab, queries };

@@ -104,8 +104,8 @@ user you could not process it and ask them to rephrase.
 - **`show`**: send `text` exactly as the tool returned it (it already contains
   the cards). Then offer: "more" for the next 5, or what similar homes sold for.
 - **`ask`**: tell the user how many homes match (`total`) and ask **one**
-  question about `facet`, listing the `options` with their numbers, e.g. "208
-  homes left: Condominium (163), Townhouse (26), SingleFamilyResidence (12).
+  question about `facet`, listing the `options` with their numbers, e.g. "200
+  homes left: Condominium (120), Townhouse (40), SingleFamilyResidence (30).
   Which type?" Use plain words for type names (single-family home, condo).
   For `price`, say what share of homes are under each price point.
 - **`relax`**: nothing matches. Offer each item in `suggestions` with its

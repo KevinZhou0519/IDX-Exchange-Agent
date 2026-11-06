@@ -22,8 +22,8 @@ describe("matchCity", () => {
     expect(matchCity("irvin", fixtureVocab)).toEqual({
       kind: "ambiguous",
       candidates: [
-        { value: "Irvine", activeListings: 723 },
-        { value: "Arvin", activeListings: 3 },
+        { value: "Irvine", activeListings: 600 },
+        { value: "Arvin", activeListings: 4 },
       ],
     });
   });
@@ -36,7 +36,7 @@ describe("matchCity", () => {
     expect(matchCity("twentynine palms", fixtureVocab)).toEqual({
       kind: "alias",
       values: ["29 Palms", "Twentynine Palms"],
-      activeListings: 220,
+      activeListings: 96,
     });
   });
 

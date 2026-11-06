@@ -248,7 +248,7 @@
               "Twentynine Palms"
             ],
             "match": "alias",
-            "activeListings": 220
+            "activeListings": 96
           }
         ],
         "types": [
@@ -268,8 +268,7 @@
               "29 Palms",
               "Twentynine Palms"
             ],
-            "match": "alias",
-            "activeListings": 220
+            "match": "alias"
           }
         ],
         "types": [
@@ -303,7 +302,7 @@
             "values": [
               "Silver Lake"
             ],
-            "activeListings": 3
+            "activeListings": 5
           }
         ]
       },
@@ -320,8 +319,7 @@
           {
             "values": [
               "Silver Lake"
-            ],
-            "activeListings": 3
+            ]
           }
         ]
       }
