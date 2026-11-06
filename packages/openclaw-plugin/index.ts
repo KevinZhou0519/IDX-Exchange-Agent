@@ -1,49 +1,184 @@
 // OpenClaw adapter for the IDX agent. The only file that imports OpenClaw;
-// all behavior lives in @idx/core.
+// all behavior lives in @idx/core. Each tool is created per call with the
+// chat's session key, so every conversation has its own saved search.
 import { appendFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { Type } from "typebox";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import {
   ExtractionSchema,
+  PAGE_SIZE,
+  createDb,
+  createDbCounter,
+  createMessageLog,
+  createSqliteStore,
   loadVocabulary,
-  resolveExtraction,
+  showListings,
+  showSoldComps,
+  updateSearch,
   type Extraction,
-  type ResolveResult,
+  type DbConfig,
+  type MessageLog,
+  type NextAction,
+  type SearchDeps,
   type Vocabulary,
 } from "@idx/core";
 
-const PARSE_DESCRIPTION = [
-  "Turn a home-search request into validated MLS search filters.",
-  "Fill only the fields the user actually mentioned. For every value, set `evidence` to the exact words from the user's message it came from, copied verbatim, and pass the full message as `text`.",
-  "Write city and type values the way the user wrote them (typos included); the tool matches them to the real data.",
-  "The result's `outcome` says what to do next: ok, needs_confirmation, needs_retry (call again once with attempt 2, using `issues`), or ambiguous (ask the user).",
+const UPDATE_DESCRIPTION = [
+  "Update this chat's saved home search with what the user's latest message adds or changes, then get the next step.",
+  "Send only fields this message mentions; earlier filters are kept. Use `remove` for filters the user drops and `reset: true` to start a new search.",
+  "For every value, set `evidence` to the exact words from the message, and pass the whole message as `text`.",
+  "The result has `outcome` (ok, needs_confirmation, needs_retry, ambiguous) and, when ok or needs_confirmation, `next`: show (send `text`), ask (one question using `options`), or relax (offer `suggestions`).",
 ].join(" ");
 
-export function createParseTool(vocab: Vocabulary) {
+const PageSchema = Type.Object(
+  { page: Type.Integer({ minimum: 1, description: "Page of results to show; 1 is the first 5, 2 the next 5" }) },
+  { additionalProperties: false },
+);
+const NoParams = Type.Object({}, { additionalProperties: false });
+
+/** Evaluation runs only (scripts/eval-*.ts). Unset by default, so user messages are never written to disk. */
+function logForEval(tool: string, sessionKey: string, params: unknown, details: unknown) {
+  const evalLog = process.env.IDX_EVAL_LOG;
+  if (evalLog) appendFileSync(evalLog, JSON.stringify({ tool, sessionKey, params, details }) + "\n");
+}
+
+const textResult = <T,>(text: string, details: T) => ({ content: [{ type: "text" as const, text }], details });
+
+const FACET_WORDS = { city: "the city", price: "price (their budget)", type: "the type of home", beds: "bedrooms" } as const;
+
+/**
+ * A one-line instruction for the next step, placed in `details`: in Code Mode
+ * the model reads `details`, and without it a model shown cards tended to page
+ * through every listing instead of asking its question.
+ */
+export function nextInstruction(next: NextAction | undefined): string | undefined {
+  switch (next?.action) {
+    case "show":
+      return 'Send `text` to the user exactly as it is, then offer "more" or recent sales.';
+    case "ask":
+      return `Ask the user one question about ${FACET_WORDS[next.facet]} using \`options\` and \`total\`. Do not call show_listings until they answer or ask for listings.`;
+    case "relax":
+      return "Offer `suggestions` to the user (or say nothing matches if there are none). Do not call other tools.";
+    default:
+      return undefined;
+  }
+}
+
+/** Records a real inbound message for its chat (OpenClaw's message_received hook). */
+export function recordInbound(
+  messages: MessageLog,
+  event: { content: string; sessionKey?: string },
+  ctx: { sessionKey?: string },
+) {
+  const sessionKey = event.sessionKey ?? ctx.sessionKey;
+  if (sessionKey && event.content) messages.record(sessionKey, event.content);
+}
+
+const NO_SESSION = {
+  error: "no_session",
+  instruction:
+    "This conversation has no session, so the tool can't keep a search here. Tell the user to search from their WhatsApp chat or the dashboard.",
+} as const;
+
+const UNAVAILABLE = {
+  error: "search_unavailable",
+  instruction: "Tell the user the home search is temporarily unavailable and to try again in a moment. Do not retry now.",
+} as const;
+
+/** Runs a tool body, turning a missing session or a database failure into a plain instruction. */
+async function guarded<T>(sessionKey: string | undefined, body: (key: string) => Promise<{ content: { type: "text"; text: string }[]; details: T }>) {
+  if (!sessionKey) return textResult(NO_SESSION.instruction, NO_SESSION);
+  try {
+    return await body(sessionKey);
+  } catch (error) {
+    // The cause stays in the gateway log, not in the model's context.
+    console.error("[idx-agent] search failed:", error);
+    return textResult(UNAVAILABLE.instruction, UNAVAILABLE);
+  }
+}
+
+/** The plugin always connects as the read-only user, whatever MYSQL_USER says. */
+export function pluginDbConfig(): DbConfig {
   return {
-    name: "parse_property_query",
-    label: "Parse property search",
-    description: PARSE_DESCRIPTION,
-    parameters: ExtractionSchema,
-    async execute(_toolCallId: string, params: Extraction) {
-      const details: ResolveResult = resolveExtraction(params, vocab);
-      // Evaluation runs only (scripts/eval-llm.ts). Unset by default, so user
-      // messages are never written to disk in normal use.
-      const evalLog = process.env.IDX_EVAL_LOG;
-      if (evalLog) appendFileSync(evalLog, JSON.stringify({ text: params.text, params, details }) + "\n");
-      const { outcome, summary, issues } = details;
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify({ outcome, summary, issues }) }],
-        details,
-      };
+    host: process.env.MYSQL_HOST ?? "localhost",
+    user: "idx_user",
+    password: "",
+    database: process.env.MYSQL_DATABASE ?? "idx_exchange",
+  };
+}
+
+/** OpenClaw's default puts every direct message in one session, so different contacts would share a search. */
+export function sessionScopeWarning(config: { session?: { dmScope?: string } }): string | undefined {
+  if ((config.session?.dmScope ?? "main") !== "main") return undefined;
+  return (
+    'idx-agent: session.dmScope is "main", so all direct messages share one saved search. ' +
+    'Set session.dmScope to "per-channel-peer" before more than one person uses the agent.'
+  );
+}
+
+export function createTools(deps: SearchDeps, sessionKey: string | undefined, messages?: MessageLog) {
+  return {
+    update_search: {
+      name: "update_search",
+      label: "Update home search",
+      description: UPDATE_DESCRIPTION,
+      parameters: ExtractionSchema,
+      async execute(_toolCallId: string, params: Extraction) {
+        return guarded(sessionKey, async (key) => {
+          const result = await updateSearch(deps, key, params, messages?.latest(key));
+          const details = { ...result, instruction: nextInstruction(result.next) };
+          logForEval("update_search", key, params, details);
+          const { outcome, summary, issues, next, text, instruction } = details;
+          return textResult(JSON.stringify({ outcome, summary, issues, next, text, instruction }), details);
+        });
+      },
+    },
+    show_listings: {
+      name: "show_listings",
+      label: "Show listings",
+      description: "Show a page of property cards for this chat's saved search. Use page 2, 3… when the user asks for more.",
+      parameters: PageSchema,
+      async execute(_toolCallId: string, params: { page: number }) {
+        return guarded(sessionKey, async (key) => {
+        const { total, text } = await showListings(deps, key, params.page);
+        // Code Mode hands the model `details`, not `content`, so the cards go in both.
+        const lastPage = total > 0 && params.page * PAGE_SIZE >= total;
+        const instruction = lastPage
+          ? `All ${total} results have now been shown. If the user asks for more, tell them that was all and offer to change the search; do not call show_sold_comps unless they ask about sold homes.`
+          : undefined;
+        const details = { total, page: params.page, text, instruction };
+        logForEval("show_listings", key, params, details);
+        return textResult(text, details);
+        });
+      },
+    },
+    show_sold_comps: {
+      name: "show_sold_comps",
+      label: "Show sold comps",
+      description: "Show what similar homes recently sold for, based on this chat's saved search.",
+      parameters: NoParams,
+      async execute(_toolCallId: string, _params: Record<string, never>) {
+        return guarded(sessionKey, async (key) => {
+          const { summary, text } = await showSoldComps(deps, key);
+          const details = { summary, text };
+          logForEval("show_sold_comps", key, {}, details);
+          return textResult(text, details);
+        });
+      },
     },
   };
 }
 
+export type IdxTools = ReturnType<typeof createTools>;
+const TOOL_NAMES = ["update_search", "show_listings", "show_sold_comps"] as const;
+
 export default definePluginEntry({
   id: "idx-agent",
   name: "IDX Exchange Agent",
-  description: "Natural-language property search over California MLS data.",
+  description: "Conversational property search over California MLS data.",
   register(api) {
     // The build copies the vocabulary next to the bundle (dist/data/vocab.json).
     // Loaded once at startup; throws with the command to run if it is missing.
@@ -58,6 +193,22 @@ export default definePluginEntry({
         { cause: error },
       );
     }
-    api.registerTool(createParseTool(vocab));
+    const stateDir = process.env.IDX_STATE_DIR ?? join(homedir(), ".openclaw", "idx-agent");
+    const warning = sessionScopeWarning(api.config as { session?: { dmScope?: string } });
+    if (warning) api.logger.warn(warning);
+    const db = createDb(pluginDbConfig());
+    const deps: SearchDeps = {
+      store: createSqliteStore(join(stateDir, "searches.sqlite")),
+      db,
+      counter: createDbCounter(db),
+      vocab,
+    };
+    // Needs channels.whatsapp.pluginHooks.messageReceived: true to receive
+    // WhatsApp messages; without it, quotes are checked against the model's copy.
+    const messages = createMessageLog();
+    api.on("message_received", (event, ctx) => recordInbound(messages, event, ctx));
+    for (const name of TOOL_NAMES) {
+      api.registerTool((ctx) => createTools(deps, ctx.sessionKey, messages)[name], { name });
+    }
   },
 });

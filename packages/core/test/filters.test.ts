@@ -44,5 +44,13 @@ describe("ExtractionSchema", () => {
     expect(Value.Check(ExtractionSchema, { ...handbookExtraction, maxPrice: { value: 1_500_000.5, evidence: "under $1.5M" } })).toBe(false);
     expect(Value.Check(ExtractionSchema, { ...handbookExtraction, minBaths: { value: 2.5, evidence: "2.5 baths" } })).toBe(true);
   });
+
+  it("accepts remove and reset", () => {
+    expect(Value.Check(ExtractionSchema, { ...handbookExtraction, remove: ["pool", "maxPrice"], reset: true })).toBe(true);
+  });
+
+  it("rejects removing an unknown field", () => {
+    expect(Value.Check(ExtractionSchema, { ...handbookExtraction, remove: ["swimmingPool"] })).toBe(false);
+  });
 });
 
