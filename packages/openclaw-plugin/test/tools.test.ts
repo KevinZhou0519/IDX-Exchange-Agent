@@ -75,7 +75,7 @@ describe("real inbound message", () => {
 
 describe("per-result instruction", () => {
   it("tells the model to ask, not to list, when the next step is ask", async () => {
-    const result = await createTools(fakeDeps(723), "chat-a").update_search.execute("t1", irvineMessage);
+    const result = await createTools(fakeDeps(600), "chat-a").update_search.execute("t1", irvineMessage);
     expect(details(result).next?.action).toBe("ask");
     expect(details(result).instruction).toMatch(/^Ask the user one question about price/);
     expect(details(result).instruction).toContain("Do not call show_listings");

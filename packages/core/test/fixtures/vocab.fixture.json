@@ -3,95 +3,95 @@
   "cities": [
     {
       "name": "Irvine",
-      "activeListings": 723,
+      "activeListings": 600,
       "soldCount": 0
     },
     {
       "name": "Arvin",
-      "activeListings": 3,
+      "activeListings": 4,
       "soldCount": 0
     },
     {
       "name": "Newport Beach",
-      "activeListings": 230,
+      "activeListings": 450,
       "soldCount": 0
     },
     {
       "name": "Newport Coast",
-      "activeListings": 49,
+      "activeListings": 20,
       "soldCount": 0
     },
     {
       "name": "29 Palms",
-      "activeListings": 213,
+      "activeListings": 90,
       "soldCount": 0
     },
     {
       "name": "Twentynine Palms",
-      "activeListings": 7,
+      "activeListings": 6,
       "soldCount": 0
     },
     {
       "name": "Los Angeles",
-      "activeListings": 4015,
+      "activeListings": 9000,
       "soldCount": 0
     },
     {
       "name": "Silver Lake",
-      "activeListings": 3,
+      "activeListings": 5,
       "soldCount": 0
     },
     {
       "name": "San Diego",
-      "activeListings": 2198,
+      "activeListings": 8000,
       "soldCount": 0
     },
     {
       "name": "Pasadena",
-      "activeListings": 316,
+      "activeListings": 500,
       "soldCount": 0
     },
     {
       "name": "Gardena",
-      "activeListings": 73,
+      "activeListings": 150,
       "soldCount": 0
     },
     {
       "name": "Rancho Cucamonga",
-      "activeListings": 257,
+      "activeListings": 350,
       "soldCount": 0
     },
     {
       "name": "Orange",
-      "activeListings": 174,
+      "activeListings": 250,
       "soldCount": 0
     },
     {
       "name": "Tustin",
-      "activeListings": 101,
+      "activeListings": 300,
       "soldCount": 0
     }
   ],
   "types": [
     {
       "name": "SingleFamilyResidence",
-      "activeListings": 37561
+      "activeListings": 5000
     },
     {
       "name": "Condominium",
-      "activeListings": 11820
+      "activeListings": 4000
     },
     {
       "name": "Townhouse",
-      "activeListings": 3193
+      "activeListings": 3000
     },
     {
       "name": "Duplex",
-      "activeListings": 465
+      "activeListings": 1000
     },
     {
       "name": "ManufacturedOnLand",
-      "activeListings": 1003
+      "activeListings": 2000
     }
   ]
 }
