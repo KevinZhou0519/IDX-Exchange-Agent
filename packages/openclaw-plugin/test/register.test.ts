@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import plugin from "../index.ts";
 
 describe("plugin registration", () => {
@@ -6,5 +8,41 @@ describe("plugin registration", () => {
     // The source folder has no data/vocab.json (only the built dist does).
     const api = { registerTool: () => {} };
     expect(() => plugin.register(api as never)).toThrow(/corepack pnpm vocab && corepack pnpm build:plugin/);
+  });
+});
+
+describe("plugin manifest and skills", () => {
+  const read = (path: string) => readFileSync(fileURLToPath(new URL(path, import.meta.url)), "utf8");
+
+  it("declares every tool the plugin registers", async () => {
+    const { createTools } = await import("../index.ts");
+    const { fakeDeps } = await import("./fake-deps.ts");
+    const manifest = JSON.parse(read("../openclaw.plugin.json"));
+    expect(manifest.contracts.tools).toEqual(Object.keys(createTools(fakeDeps(1), "chat")));
+  });
+
+  it("market questions and sold homes like this search are kept apart in every description", async () => {
+    const { createTools } = await import("../index.ts");
+    const { fakeDeps } = await import("./fake-deps.ts");
+    const description = read("../skills/market-stats/SKILL.md").match(/^description: (.+)$/m)![1];
+    expect(description).toMatch(/similar homes sold for.*show_sold_comps/i);
+    expect(createTools(fakeDeps(1), "chat").market_report.description).toMatch(/similar homes sold for.*show_sold_comps/i);
+    expect(read("../skills/property-search/SKILL.md")).toMatch(/similar homes sell for.*show_sold_comps/is);
+  });
+
+  it("ships the market-stats skill, and the search skill points market questions to it", () => {
+    const skill = read("../skills/market-stats/SKILL.md");
+    expect(skill).toMatch(/^---\nname: market-stats\ndescription: .+\n---\n/);
+    expect(skill).toContain("market_report");
+    expect(read("../skills/property-search/SKILL.md")).toContain("market-stats");
+  });
+
+  it("the market-stats description itself carries the decline rule, since only descriptions are always in the prompt", () => {
+    const description = read("../skills/market-stats/SKILL.md").match(/^description: (.+)$/m)![1];
+    expect(description).toMatch(/who lives/i);
+    expect(description).toMatch(/safe/i);
+    expect(description).toMatch(/decline/i);
+    expect(description).toMatch(/database/i);
+    expect(description).toMatch(/only from the market_report tool/);
   });
 });

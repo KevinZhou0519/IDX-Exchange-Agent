@@ -1,20 +1,22 @@
-// Runs each scripted conversation in fixtures/conversations.json through the
-// real OpenClaw agent, all turns of one conversation in one session, and
-// scores every turn from the tool calls it made (logged via IDX_EVAL_LOG).
+// Runs each scripted conversation in a fixture (default
+// fixtures/conversations.json) through the real OpenClaw agent, all turns of
+// one conversation in one session, and scores every turn from the tool calls
+// it made (logged via IDX_EVAL_LOG) and from its reply.
 //
 // Usage: stop the gateway, keep the lid open, then `corepack pnpm eval:chat`
-// (optionally `-- c-handbook c-more`).
+// or `corepack pnpm eval:market` (optionally `-- c-handbook c-more`).
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { PAGE_SIZE, type FilterField, type NextAction, type UpdateResult } from "../packages/core/src/index.ts";
+import { PAGE_SIZE, type FilterField, type MarketResult, type NextAction, type UpdateResult } from "../packages/core/src/index.ts";
+import { ungrounded } from "./lib/grounded.ts";
 import { matchesSubset } from "./lib/match-subset.ts";
 import { replyText } from "./lib/reply-text.ts";
 
 type Expect = {
-  tool?: "update_search" | "show_listings" | "show_sold_comps";
+  tool?: "update_search" | "show_listings" | "show_sold_comps" | "market_report";
   next?: NextAction["action"];
   facet?: string;
   saved?: Record<string, unknown>;
@@ -22,12 +24,25 @@ type Expect = {
   page?: number;
   noMore?: boolean;
   comps?: boolean;
+  /** The last market_report call's outcome, and the cities its reports cover. */
+  market?: { outcome?: MarketResult["outcome"]; cities?: string[] };
+  /** No market_report call this turn (sensitive questions). */
+  noMarket?: boolean;
+  /** The reply declines (part of) the question. */
+  declines?: boolean;
+  /** The reply starts with the "I can't tell you whether to buy / to sell / prices will…" disclaimer. */
+  disclaimer?: boolean;
+  /** The reply has an "In short:" summary. */
+  summary?: boolean;
+  /** A case-insensitive pattern the reply must match. */
+  says?: string;
 };
 type Conversation = { id: string; turns: { message: string; expect: Expect }[] };
 type Call =
   | { tool: "update_search"; details: UpdateResult }
   | { tool: "show_listings"; details: { total: number; page: number } }
-  | { tool: "show_sold_comps"; details: { summary: { count: number } | null } };
+  | { tool: "show_sold_comps"; details: { summary: { count: number } | null } }
+  | { tool: "market_report"; details: MarketResult };
 
 const repoRoot = fileURLToPath(new URL("..", import.meta.url));
 const openclawDir = process.env.OPENCLAW_DIR ?? join(homedir(), "Developer", "openclaw");
@@ -35,8 +50,11 @@ const runId = new Date().toISOString().replace(/[:.]/g, "-");
 const outDir = join(repoRoot, "eval-logs", `chat-${runId}`);
 mkdirSync(outDir, { recursive: true });
 
-const only = new Set(process.argv.slice(2));
-const conversations: Conversation[] = JSON.parse(readFileSync(join(repoRoot, "fixtures", "conversations.json"), "utf8"))
+const args = process.argv.slice(2);
+const fixtureFlag = args.indexOf("--fixture");
+const fixture = fixtureFlag >= 0 ? args.splice(fixtureFlag, 2)[1] : "conversations.json";
+const only = new Set(args);
+const conversations: Conversation[] = JSON.parse(readFileSync(join(repoRoot, "fixtures", fixture), "utf8"))
   .filter((c: Conversation) => only.size === 0 || only.has(c.id));
 
 const readCalls = (path: string): Call[] =>
@@ -45,8 +63,15 @@ const readCalls = (path: string): Call[] =>
 /** More tool calls than this in one turn means the model is looping. */
 const MAX_CALLS_PER_TURN = 3;
 
-/** Problems with one turn's calls against its expectation; empty means pass. */
-function judge(calls: Call[], expect: Expect, reply: string): string[] {
+const DECLINE = /\b(?:can(?:'|’)?t|cannot|can not|unable to|not able to|won(?:'|’)?t) (?:\w+ ){0,4}?(?:help|share|answer|provide|discuss|ignore)|\bcan only (?:answer|help)/i;
+const DISCLAIMER = /^[\s*_#>]*I can(?:'|’)?t tell you whether (?:to buy|to sell|prices will)/i;
+
+/**
+ * Problems with one turn's calls and reply against its expectation; empty
+ * means pass. `sources` is every tool result and user message of the
+ * conversation so far: market numbers in a reply must come from them.
+ */
+function judge(calls: Call[], expect: Expect, reply: string, sources: unknown[], marketSoFar: boolean): string[] {
   const problems: string[] = [];
   if (calls.length > MAX_CALLS_PER_TURN) problems.push(`${calls.length} tool calls (looping?)`);
   const last = <T extends Call["tool"]>(tool: T) =>
@@ -72,6 +97,29 @@ function judge(calls: Call[], expect: Expect, reply: string): string[] {
   if (expect.page !== undefined && listing?.details.page !== expect.page) problems.push(`page ${listing?.details.page} ≠ ${expect.page}`);
   if (expect.noMore && !(listing && (listing.details.page - 1) * PAGE_SIZE >= listing.details.total)) problems.push("expected past the last page");
   if (expect.comps && !((last("show_sold_comps")?.details.summary?.count ?? 0) > 0)) problems.push("expected sold comps");
+  const market = last("market_report");
+  if (expect.market) {
+    if (!market) problems.push("no market_report call");
+    else {
+      if (expect.market.outcome && market.details.outcome !== expect.market.outcome) problems.push(`outcome ${market.details.outcome} ≠ ${expect.market.outcome}`);
+      const cities = market.details.reports.map((r) => r.city);
+      if (expect.market.cities && cities.join() !== expect.market.cities.join()) problems.push(`report cities ${cities.join(", ") || "none"}`);
+    }
+  }
+  if (expect.noMarket && market) problems.push("market_report called on a sensitive question");
+  if (expect.declines && !DECLINE.test(reply)) problems.push("reply does not decline");
+  if (expect.disclaimer && !DISCLAIMER.test(reply)) problems.push("reply does not start with the disclaimer");
+  if (expect.summary) {
+    const summary = reply.search(/\bIn short\b/i);
+    const firstBullet = reply.search(/^\s*(?:[-*•]|\d+[.)])\s/m);
+    if (summary < 0) problems.push("no \"In short\" summary");
+    else if (firstBullet >= 0 && summary > firstBullet) problems.push("\"In short\" comes after the details");
+  }
+  if (expect.says && !new RegExp(expect.says, "i").test(reply)) problems.push(`reply does not match /${expect.says}/`);
+  if (marketSoFar || expect.declines) {
+    const made = ungrounded(reply, sources);
+    if (made.length) problems.push(`numbers not in any tool result: ${made.join(", ")}`);
+  }
   return problems;
 }
 
@@ -83,7 +131,9 @@ for (const conversation of conversations) {
   const sessionId = `chat-${conversation.id}-${runId}`;
   const logPath = join(outDir, `${conversation.id}.jsonl`);
   const turns = [];
+  const messages: string[] = [];
   for (const [index, turn] of conversation.turns.entries()) {
+    messages.push(turn.message);
     const before = readCalls(logPath).length;
     const started = Date.now();
     const run = spawnSync(
@@ -94,7 +144,10 @@ for (const conversation of conversations) {
     const calls = readCalls(logPath).slice(before);
     const timedOut = run.status === null;
     const reply = replyText(run.stdout ?? "");
-    const problems = timedOut ? ["timed out"] : judge(calls, turn.expect, reply);
+    const soFar = readCalls(logPath);
+    const sources = [...soFar.map((c) => c.details), ...messages];
+    const marketSoFar = soFar.some((c) => c.tool === "market_report");
+    const problems = timedOut ? ["timed out"] : judge(calls, turn.expect, reply, sources, marketSoFar);
     turnCount++;
     if (timedOut) timeouts++;
     if (problems.length === 0) turnPasses++;
@@ -105,7 +158,7 @@ for (const conversation of conversations) {
   results.push({ id: conversation.id, pass: turns.every((t) => t.problems.length === 0), turns });
 }
 
-writeFileSync(join(outDir, "report.json"), JSON.stringify({ runId, results }, null, 2) + "\n");
+writeFileSync(join(outDir, "report.json"), JSON.stringify({ runId, fixture, results }, null, 2) + "\n");
 const conversationPasses = results.filter((r) => r.pass).length;
 console.log(`\nturn pass: ${turnPasses}/${turnCount}, conversation pass: ${conversationPasses}/${results.length}`);
 if (timeouts > 0) console.log(`${timeouts} turn(s) timed out (machine asleep or network down); re-run them before trusting the score`);
